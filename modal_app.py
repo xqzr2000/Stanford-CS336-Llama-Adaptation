@@ -1,6 +1,7 @@
 """Codespaces entry points for detached Modal training and evaluation."""
 
 import re
+import signal
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -10,6 +11,8 @@ ROOT = Path("/artifacts")
 DATA = ROOT / "tinystories-v2"
 APP_NAME = "cs336-llama-adaptation"
 UV_VERSION = "0.13.6"
+MAX_MINUTES = 330
+STALL_MINUTES = 15
 app = modal.App(APP_NAME)
 volume = modal.Volume.from_name(f"{APP_NAME}-artifacts", create_if_missing=True)
 locks = modal.Dict.from_name(f"{APP_NAME}-locks", create_if_missing=True)
@@ -46,6 +49,25 @@ def claim(key):
         locks.pop(key, None)
 
 
+@contextmanager
+def stall_guard(seconds=STALL_MINUTES * 60):
+    """Fail the job if training makes no progress for the given time."""
+    def stalled(*_):
+        raise RuntimeError(f"No training progress for {seconds} seconds. Stopping to limit spend.")
+
+    try:
+        previous = signal.signal(signal.SIGALRM, stalled)
+    except ValueError:  # Signals are unavailable outside the main thread.
+        print("stall_guard=unavailable", flush=True)
+        yield lambda: None
+        return
+    try:
+        yield lambda: signal.alarm(seconds)
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, previous)
+
+
 @app.function(image=cpu_image, volumes={str(ROOT): volume}, cpu=4, memory=8192, timeout=7200)
 def prepare():
     """Download the raw stories and write the tokenizer and packed data."""
@@ -60,12 +82,12 @@ def prepare():
 
 @app.function(
     image=gpu_image, gpu="H100", volumes={str(ROOT): volume},
-    cpu=4, memory=8192, timeout=24 * 60 * 60,
+    cpu=4, memory=8192, timeout=(MAX_MINUTES + 30) * 60,
 )
 def pretrain(
     run_id: str = "llama124m", target_step: int = 100, minutes: int = 20,
-    schedule_steps: int = 15_000, warmup: int = 200, micro_batch: int = 8,
-    accumulation: int = 8, peak_lr: float = 0.0003, checkpoint_every: int = 500,
+    schedule_steps: int = 15_000, warmup: int = 200, micro_batch: int = 64,
+    accumulation: int = 1, peak_lr: float = 0.0003, checkpoint_every: int = 500,
 ):
     """Create or resume a single pretraining run."""
     import torch
@@ -74,10 +96,10 @@ def pretrain(
     from llama_lab.model import ModelConfig
     from llama_lab.train import pretrain_model
 
-    if not 0 < minutes <= 1_380:
-        raise ValueError("Choose 1–1,380 minutes per invocation.")
+    if not 0 < minutes <= MAX_MINUTES:
+        raise ValueError(f"Choose 1–{MAX_MINUTES} minutes per invocation. Resume for longer runs.")
     run_id = safe_id(run_id)
-    with claim(f"pretrain:{run_id}"):
+    with claim(f"pretrain:{run_id}"), stall_guard() as heartbeat:
         manifest = read_manifest(DATA)
         pretrain_model(
             ModelConfig(vocab_size=manifest["vocab_size"]), DATA, ROOT / "runs" / run_id,
@@ -85,6 +107,7 @@ def pretrain(
             schedule_steps=schedule_steps, warmup=warmup, micro_batch=micro_batch,
             accumulation=accumulation, peak_lr=peak_lr, minutes=minutes,
             checkpoint_every=checkpoint_every, log_every=25, commit=volume.commit,
+            heartbeat=heartbeat,
         )
 
 

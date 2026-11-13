@@ -68,7 +68,7 @@ def validate(model, tokens, micro_batch, device, batches=8):
 def pretrain_model(
     config, data_root, run_root, fingerprint, device, *,
     target_step, schedule_steps, warmup, micro_batch, accumulation, peak_lr,
-    minutes, checkpoint_every, log_every, commit=lambda: None,
+    minutes, checkpoint_every, log_every, commit=lambda: None, heartbeat=lambda: None,
 ):
     if not (0 < target_step <= schedule_steps and 0 < warmup < schedule_steps):
         raise ValueError("Require 0 < target_step <= schedule_steps and 0 < warmup < schedule_steps.")
@@ -83,8 +83,10 @@ def pretrain_model(
         "warmup": warmup, "micro_batch": micro_batch, "accumulation": accumulation,
         "peak_lr": peak_lr, "seed": SEED,
     }
-    train_tokens = np.memmap(data_root / "train.bin", dtype="<u2", mode="r")
-    valid_tokens = np.memmap(data_root / "valid.bin", dtype="<u2", mode="r")
+    # Read both splits into memory so random windows never wait on the storage mount.
+    heartbeat()
+    train_tokens = np.fromfile(data_root / "train.bin", dtype="<u2")
+    valid_tokens = np.fromfile(data_root / "valid.bin", dtype="<u2")
     if len(train_tokens) <= config.context:
         raise ValueError("Training split is too short for a full context.")
 
@@ -115,12 +117,14 @@ def pretrain_model(
     if step >= target_step:
         print(f"already reached target step={step}", flush=True)
         return
+    heartbeat()
     if step == 0:
         print(f"step=0 val_loss={validate(model, valid_tokens, micro_batch, device):.4f}", flush=True)
 
     window_start = time.monotonic()
     window_steps = 0
     window_loss = 0.0
+    recent = {}
     while step < target_step:
         lr = learning_rate(step + 1, schedule_steps, warmup, peak_lr)
         for group in optimizer.param_groups:
@@ -139,9 +143,11 @@ def pretrain_model(
         optimizer.step()
         step += 1
         window_steps += 1
+        heartbeat()
         out_of_time = time.monotonic() - started >= minutes * 60
         stopping = step == target_step or out_of_time
-        if step % log_every == 0 or stopping:
+        checkpointing = step % checkpoint_every == 0 or stopping
+        if step % log_every == 0 or checkpointing:
             mean_loss = window_loss.item() / window_steps
             if not math.isfinite(mean_loss):
                 raise RuntimeError(f"Non-finite training loss at step {step}. The prior checkpoint is intact.")
@@ -151,9 +157,11 @@ def pretrain_model(
                 f"lr={lr:.3g} train_tokens_per_second={throughput:,.0f}",
                 flush=True,
             )
+            recent = {"train_loss": mean_loss, "train_tokens_per_second": throughput}
             window_steps, window_loss = 0, 0.0
             window_start = time.monotonic()
-        if step % checkpoint_every == 0 or stopping:
+        if checkpointing:
+            checkpoint_start = time.monotonic()
             val_loss = validate(model, valid_tokens, micro_batch, device)
             if not math.isfinite(val_loss):
                 raise RuntimeError(f"Non-finite validation loss at step {step}. The prior checkpoint is intact.")
@@ -165,13 +173,19 @@ def pretrain_model(
             metrics = {
                 "step": step, "tokens": step * tokens_per_step, "val_loss": val_loss,
                 "perplexity": math.exp(val_loss), "parameters": parameter_count,
-                "elapsed_seconds": time.monotonic() - started,
+                "elapsed_seconds": time.monotonic() - started, **recent,
+                "validation_and_save_seconds": time.monotonic() - checkpoint_start,
             }
             if device.type == "cuda":
                 metrics["peak_gpu_memory_gib"] = torch.cuda.max_memory_allocated(device) / 1024**3
             write_json(run_root / f"metrics-{step:06d}.json", metrics)
             commit()
-            print(f"checkpoint {metrics}", flush=True)
+            heartbeat()
+            print(
+                f"checkpoint {metrics} checkpoint_seconds={time.monotonic() - checkpoint_start:.1f}",
+                flush=True,
+            )
+            window_start = time.monotonic()
         if out_of_time:
             print(f"runtime limit reached at step={step}", flush=True)
             break

@@ -1,10 +1,10 @@
 # Stanford CS336 Llama Adaptation
 
-Train one **123,489,024-parameter Llama-style language model from random weights** on TinyStories, then fine-tune a copy on the five-class SST-5 sentiment task. Codespaces runs the commands. Modal runs data preparation, pretraining, sampling, and fine-tuning. The pilot is the first segment of the same pretraining run.
+Train one **123,489,024-parameter Llama-style language model from random weights** on TinyStories, then fine-tune a copy on the five-class SST-5 sentiment task. Codespaces runs the commands. Modal runs data preparation, pretraining, sampling, and fine-tuning. A 100-step pilot under its own run ID measures throughput before the main run starts.
 
 ## Project docs
 
-- [Plan](docs/Plan.md) covers the one-week schedule, course adaptations, and US$200 budget.
+- [Plan](docs/Plan.md) covers the one-week schedule, course adaptations, cost estimate, and US$200 budget.
 - [Runbook](docs/Runbook.md) has the Codespaces and Modal commands, checkpoints to verify, and recovery steps.
 - [Learning progress](docs/Learning-Progress.md) records decisions, local checks, experiments, and fixes.
 - [Cloud walker — Modal](docs/cloud-walker-Modal.md) records cloud runs, billing, and lessons from 11-768.
@@ -41,31 +41,35 @@ m volume get cs336-llama-adaptation-artifacts tinystories-v2/manifest.json -
 Preparation uses CPU compute. It downloads the pinned TinyStoriesV2 GPT-4 train and validation files, fits byte-level BPE on the first 100,000 training stories, inserts end-of-story tokens, and writes packed train and validation streams to a Modal Volume. The tokenizer, source revision, and token counts are recorded in the manifest. A completed preparation can be run again and will reuse its artifacts.
 
 ```bash
-m run --detach modal_app.py::pretrain --run-id llama124m --target-step 100 --minutes 20
+m run --detach modal_app.py::pretrain --run-id pilot --target-step 100 --minutes 20
 ```
 
-This starts one H100. The default batch is 8 sequences × 8 accumulation passes × 256 tokens = **16,384 tokens per optimizer step**. Step 100 is **1.64M processed tokens**. The logs show step, cumulative tokens, training loss, throughput, and checkpoint validation loss. The first log also shows the randomly initialized model's validation loss.
+This starts one H100. The default batch is 64 sequences × 256 tokens = **16,384 tokens per optimizer step**, with one pass per step. Step 100 is **1.64M processed tokens**. The logs show step, cumulative tokens, training loss, throughput, and checkpoint validation loss. The first log also shows the randomly initialized model's validation loss. Each `metrics-*.json` file also records the latest training loss, `train_tokens_per_second`, and the time spent on validation and saving, so the measurements outlive Modal's log retention (one day on the Starter plan).
 
 ```bash
 m app logs ap-REPLACE_WITH_PILOT_ID
-m volume ls cs336-llama-adaptation-artifacts runs/llama124m
+m volume get cs336-llama-adaptation-artifacts runs/pilot/metrics-000100.json -
 ```
 
-## Resume pretraining
+## Start and resume the main run
 
-Once the previous app has finished, submit the next segment with the **same run ID**. The target step is cumulative.
+Use the pilot's throughput and the [cost estimate](docs/Plan.md#cost-estimate) to choose the length of the main run **before its first step**. The checkpoint stores the schedule length, warmup, batch settings, and peak learning rate, and a segment with different values is rejected. The default schedule is 15,000 steps, about 0.46 of one pass over the training tokens. For a longer run, add the same `--schedule-steps N` to every segment below, starting with the first.
+
+Start the main run under a new run ID. Once an app has finished, submit the next segment with the **same run ID**. The target step is cumulative.
 
 ```bash
 m run --detach modal_app.py::pretrain --run-id llama124m --target-step 1000 --minutes 90
 ```
 
-Look for `resumed step=100` if the pilot reached its target. If it reached the time limit first, expect the last saved step. The run saves `latest.pt` every 500 steps and at each planned stop. It saves model weights, optimizer state, batch sampling RNG state, validation loss, and the exact run settings. Small `metrics-*.json` files record validation loss, processed tokens, and peak allocated GPU memory. A new invocation resumes from the last committed checkpoint. Keep schedule, warmup, micro-batch, accumulation, and peak learning rate identical across segments. You can change the target step, runtime, and checkpoint interval. The default cosine schedule ends at step 15,000, or 245.76M processed tokens.
+The first segment starts from random weights. On later segments, look for `resumed step=...` with the last saved step. The run saves `latest.pt` every 500 steps and at each planned stop. It saves model weights, optimizer state, batch sampling RNG state, validation loss, and the exact run settings. Small `metrics-*.json` files record validation loss, processed tokens, and peak allocated GPU memory. A new invocation resumes from the last committed checkpoint. Keep schedule, warmup, micro-batch, accumulation, and peak learning rate identical across segments. You can change the target step, runtime, and checkpoint interval. The default cosine schedule ends at step 15,000, or 245.76M processed tokens.
 
 The example below targets step 5,000 (81.92M cumulative tokens). Set the target and runtime using your measured throughput and remaining budget. If an app reaches its time limit before the target, launch another segment with the same target.
 
 ```bash
-m run --detach modal_app.py::pretrain --run-id llama124m --target-step 5000 --minutes 360
+m run --detach modal_app.py::pretrain --run-id llama124m --target-step 5000 --minutes 120
 ```
+
+One invocation accepts at most 330 minutes, and Modal stops the function 30 minutes after that. The job also fails itself if no optimizer step or checkpoint completes for 15 minutes. In both cases the last committed checkpoint remains, and the same command resumes from it.
 
 Estimate **GPU hours ≈ remaining tokens ÷ measured tokens/sec ÷ 3,600**. Include startup, checkpointing, evaluation, and CPU/RAM when setting a budget. Modal lists the H100 at approximately **US$3.95 per GPU-hour**. Use **US$200 as the total project cap**, with a working allocation of $20 for preparation and pilot, $130 for pretraining, $20 for SST-5, and $30 in reserve. Check workspace billing before each new segment. Modal's workspace limits cover all projects in the current billing cycle, and the per-invocation runtime applies to each execution attempt. Stop a running app from the Modal dashboard or with `m app stop ap-REPLACE_ME`. [Modal pricing](https://modal.com/pricing) · [Workspace budgets](https://modal.com/docs/guide/budgets)
 
@@ -98,8 +102,8 @@ m run --detach modal_app.py::sentiment --run-id llama124m --experiment sst5-seed
 | Day | Work in Codespaces |
 | --- | --- |
 | 1 | Open the Codespace, run tests, authenticate Modal, and launch CPU data prep. |
-| 2 | Check the manifest, launch the 100-step pilot, and read the initial and final validation losses. |
-| 3 | Resume to step 1,000. Check throughput and estimate the next segment from the observed cost. |
+| 2 | Check the manifest, launch the 100-step pilot, and read the validation losses and throughput. |
+| 3 | Choose the schedule length from the pilot's throughput. Start the main run and train to step 1,000. |
 | 4 | Sample stories and launch the next segment within the remaining budget. |
 | 5 | Compare samples and validation loss. Continue pretraining if useful. |
 | 6 | Run SST-5 fine-tuning and collect dev accuracy and the majority-class baseline. |

@@ -1,5 +1,6 @@
 import hashlib
 import json
+import time
 
 import numpy as np
 import pytest
@@ -65,7 +66,12 @@ def test_resume_generation_and_sentiment(tiny_data):
         schedule_steps=6, warmup=1, micro_batch=2, accumulation=1, peak_lr=0.001,
         minutes=1, checkpoint_every=2, log_every=1,
     )
-    pretrain_model(config, data, run, manifest, CPU, target_step=2, **settings)
+    beats = []
+    pretrain_model(config, data, run, manifest, CPU, target_step=2, heartbeat=lambda: beats.append(1), **settings)
+    assert len(beats) >= 4
+    metrics = json.loads((run / "metrics-000002.json").read_text())
+    assert metrics["train_loss"] > 0 and metrics["train_tokens_per_second"] > 0
+    assert metrics["validation_and_save_seconds"] >= 0
     pretrain_model(config, data, run, manifest, CPU, target_step=4, **settings)
     pretrain_model(config, data, data / "straight", manifest, CPU, target_step=4, **settings)
     checkpoint = run / "latest.pt"
@@ -95,3 +101,15 @@ def test_resume_generation_and_sentiment(tiny_data):
     assert (output / "best.pt").exists()
     _, _, metadata = load_for_eval(checkpoint, data, CPU)
     assert metadata["step"] == 4
+
+
+def test_stall_guard_stops_a_hung_job():
+    from modal_app import stall_guard
+
+    with pytest.raises(RuntimeError, match="No training progress"):
+        with stall_guard(seconds=1) as heartbeat:
+            heartbeat()
+            time.sleep(5)
+    with stall_guard(seconds=1) as heartbeat:
+        heartbeat()
+    time.sleep(1.5)

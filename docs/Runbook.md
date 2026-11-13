@@ -30,27 +30,31 @@ The manifest records the dataset revision, vocabulary size, tokenizer hash, and 
 ## Day 2 · Pilot the full-size model
 
 ```bash
-m run --detach modal_app.py::pretrain --run-id llama124m --target-step 100 --minutes 20
+m run --detach modal_app.py::pretrain --run-id pilot --target-step 100 --minutes 20
 m app logs ap-PILOT_ID
-m volume ls cs336-llama-adaptation-artifacts runs/llama124m
+m volume ls cs336-llama-adaptation-artifacts runs/pilot
 ```
 
 Confirm the reported parameter count of **123,489,024**, the initial validation loss, progress logs with finite loss, and a committed `latest.pt` with a matching `metrics-*.json` file. At step 100 the metrics file is `metrics-000100.json`. If the time limit stopped training earlier, use the actual saved step.
 
 ```bash
-m volume get cs336-llama-adaptation-artifacts runs/llama124m/metrics-000100.json -
+m volume get cs336-llama-adaptation-artifacts runs/pilot/metrics-000100.json -
 ```
 
-## Days 3–5 · Resume, budget, and sample
+The metrics file also holds `train_tokens_per_second`, the latest training loss, and `validation_and_save_seconds`. Read the logs on the same day if you need them. The Starter plan keeps logs for one day.
 
-Once the previous pretraining app has finished, submit the next segment under the same run ID. `--target-step` is cumulative. Keep the batch settings, learning-rate schedule, and peak learning rate the same so the new invocation can load the checkpoint.
+## Days 3–5 · Start the main run, budget, and sample
+
+Put the pilot's `train_tokens_per_second` into the [cost estimate](Plan.md#cost-estimate) and choose the schedule length. The default is 15,000 steps. For a longer run, add the same `--schedule-steps N` to every pretraining command below. The checkpoint rejects a segment with a different schedule, warmup, batch setting, or peak learning rate.
+
+Start the main run under the run ID `llama124m`. Once a pretraining app has finished, submit the next segment under the same run ID. `--target-step` is cumulative.
 
 ```bash
 m run --detach modal_app.py::pretrain --run-id llama124m --target-step 1000 --minutes 90
 m app logs ap-RESUME_ID
 ```
 
-Look for `resumed step=...` with the prior saved step. Calculate remaining tokens as `(target step − saved step) × 16,384` with the default batch. Divide by measured tokens per second and then by 3,600 for estimated GPU hours. Use several steady log windows, then allow for initialization, checkpointing, evaluation, and CPU/RAM. Check actual charges before scheduling more work.
+On segments after the first, look for `resumed step=...` with the prior saved step. `--minutes` accepts at most 330. Calculate remaining tokens as `(target step − saved step) × 16,384` with the default batch. Divide by measured tokens per second and then by 3,600 for estimated GPU hours. Use several steady log windows, then allow for initialization, checkpointing, evaluation, and CPU/RAM. Check actual charges before scheduling more work.
 
 ```bash
 m run modal_app.py::sample --run-id llama124m --max-new 96 --temperature 0.7 --top-p 0.9
@@ -82,6 +86,7 @@ Read the latest pretraining and sentiment metrics, check which apps are still ru
 | --- | --- |
 | Missing manifest or checkpoint | Check the app state and the selected workspace/environment. Read the prep or training logs and confirm the files were committed to the expected Volume before running the next stage. |
 | Startup looks stalled | Check whether Modal is building the image, waiting for resources, or initializing the job. Use the app ID to inspect logs before submitting a duplicate. |
+| Job failed with `No training progress` | The stall guard ended a job that completed no step or checkpoint for 15 minutes. Read the last log lines to see where it stopped, confirm the last committed metrics, then resubmit the same command. |
 | Run stopped before its target | Read the last committed metrics. When ready, submit the same run ID and cumulative target to resume. An interruption before the first checkpoint means the run starts again from random weights. |
 | Checkpoint configuration mismatch | Restore the original schedule, batch, and learning-rate settings. Use a new run ID if you intend to change the experiment. |
 | Writer lock remains after an interruption | Inspect it with `m dict items cs336-llama-adaptation-locks`. If **all** preparation, pretraining, and sentiment apps for this project have stopped and the lock is stale, clear it with `m dict clear cs336-llama-adaptation-locks`. |

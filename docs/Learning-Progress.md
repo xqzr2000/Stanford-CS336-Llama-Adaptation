@@ -27,6 +27,21 @@ With one hour per day, we chose to learn the model and training workflow through
 
 **Next session.** Prepare the data on Modal, confirm the Volume manifest, then run the first 100-step H100 pilot. Save the step-0 and final held-out loss and check that the checkpoint is visible from a fresh CLI session. [Runbook](Runbook.md)
 
+## Day 0 · November 13, 2026 · Review before spending on Modal
+
+A read-through of the code before the first GPU job found no crash-level errors and four cost risks. All four are changed in code. None of the changes has run on Modal yet.
+
+| Risk | Change |
+| --- | --- |
+| A stuck job could bill an H100 for 24 hours, because the runtime limit is checked only after a completed step. | The function timeout is 6 hours and one invocation accepts at most 330 minutes. A stall guard fails the job after 15 minutes without a completed step or checkpoint. |
+| Throughput and training loss were only in the logs, which the Starter plan keeps for one day. | Each `metrics-*.json` now records training loss, `train_tokens_per_second`, and validation and save time. |
+| The default batch ran 8 sequences per pass with 8 accumulation passes, which uses a small part of the H100 per pass. | The default is 64 sequences in one pass, the same 16,384 tokens per step. Validation now covers 512 windows. |
+| The schedule length is stored in the checkpoint, so a pilot inside the main run fixes it before throughput is known. | The pilot uses its own run ID. The main run starts after the schedule is chosen from the [cost estimate](Plan.md#cost-estimate). |
+
+The trainer also reads the token files into memory, so random batch windows do not depend on Volume read speed.
+
+**Still open.** The stall guard, the CUDA image, and H100 throughput are untested until the pilot. The cost table uses assumed throughput.
+
 ## Entry template
 
 Append a dated entry above this template.

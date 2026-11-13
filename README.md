@@ -2,6 +2,13 @@
 
 Train one **123,489,024-parameter Llama-style language model from random weights** on TinyStories, then fine-tune a copy on the five-class SST-5 sentiment task. Codespaces runs the commands. Modal runs data preparation, pretraining, sampling, and fine-tuning. The pilot is the first segment of the same pretraining run.
 
+## Project docs
+
+- [Plan](docs/Plan.md) covers the one-week schedule, course adaptations, and US$200 budget.
+- [Runbook](docs/Runbook.md) has the Codespaces and Modal commands, checkpoints to verify, and recovery steps.
+- [Learning progress](docs/Learning-Progress.md) records decisions, local checks, experiments, and fixes.
+- [Cloud walker — Modal](docs/cloud-walker-Modal.md) records cloud runs, billing, and lessons from 11-768.
+
 ## Start from GitHub Codespaces
 
 Open **Code → Codespaces → Create codespace on main**. The devcontainer installs Python 3.12, uv, the Modal CLI, and CPU PyTorch from the lockfile. GitHub Actions runs the CPU tests and checks the Modal CLI without allocating GPUs.

@@ -1,4 +1,4 @@
-"""Sample stories and adapt a pretrained checkpoint to five-way SST-5."""
+"""Sample continuations and adapt a pretrained checkpoint to five-way SST-5."""
 
 import json
 from collections import Counter
@@ -14,9 +14,9 @@ from llama_lab.data import END, PAD, download, read_manifest, write_json
 from llama_lab.train import SEED, atomic_save, precision, restore_model
 
 PROMPTS = (
-    "Once upon a time, a little fox found a shiny key.",
-    "Maya wanted to build a boat for her toy bear.",
-    "The little robot was afraid of the dark.",
+    "The water cycle describes how water moves between the oceans, the air and the land.",
+    "Photosynthesis is the process by which plants",
+    "During the Industrial Revolution, many families moved from farms to cities because",
 )
 SST_REVISION = "e51bdcd8cd3a30da231967c1a249ba59361279a3"
 

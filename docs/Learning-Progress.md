@@ -42,6 +42,22 @@ The trainer also reads the token files into memory, so random batch windows do n
 
 **Still open.** The stall guard, the CUDA image, and H100 throughput are untested until the pilot. The cost table uses assumed throughput.
 
+## Day 0 · November 13, 2026 · Switch pretraining data to FineWeb-Edu
+
+We replaced TinyStories with the pinned `sample/10BT` subset of FineWeb-Edu, a set of educational web pages filtered from Common Crawl. The local checks recorded above used TinyStories and no longer describe the prepared data.
+
+| Decision | Reason |
+| --- | --- |
+| Train on shards 000–002, about 2.5B tokens, and validate on the first 5M tokens of shard 013. | Three shards give about one pass at roughly 20 tokens per parameter. FineWeb-Edu has no validation split, so a shard that training never reads serves as one. |
+| Download one shard at a time to local disk and delete it after encoding. | The Volume keeps only the 5 GB of token streams. |
+| Keep the 16,384-entry vocabulary and 256-token context. | The parameter count stays at 123,489,024 and the earlier tests and estimates still apply. Both are small for web text: a larger vocabulary compresses it better and a longer context keeps more of each page. |
+| Raise the default schedule to 150,000 steps and the checkpoint interval to 2,000. Raise pretraining memory to 24 GiB. | The schedule matches the prepared data. The interval keeps checkpoints to 75 over the run. The trainer holds the training tokens in memory. |
+| Use educational prompts for sampling. | Story prompts no longer match the training data. |
+
+**What to expect.** Web text is harder to model than TinyStories, so validation loss will stay higher and samples will be less coherent at the same size. SST-5 may benefit, because web text covers more opinions and reviews than children's stories.
+
+**Still open.** The FineWeb-Edu revision is pinned from the Hugging Face file listing, and the real download and tokenization have not run yet. The CPU tests cover Parquet reading, the validation cap, shard cleanup, and the manifest checks on a small synthetic dataset. FineWeb-Edu contains near-duplicate pages across crawls, so some validation documents may resemble training documents.
+
 ## Entry template
 
 Append a dated entry above this template.

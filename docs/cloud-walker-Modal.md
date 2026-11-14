@@ -4,7 +4,7 @@ A chronological journal of running this project on Modal. Record what happened t
 
 ## November 13, 2026 · Set up the cloud workflow
 
-Codespaces is the control computer. It runs the Modal CLI, starts jobs, and reads logs and artifacts. On Modal, CPU functions prepare TinyStories and generate samples. One H100 runs pretraining or SST-5 fine-tuning. The named Volume `cs336-llama-adaptation-artifacts` stores the tokenizer, token streams, checkpoints, and results across invocations.
+Codespaces is the control computer. It runs the Modal CLI, starts jobs, and reads logs and artifacts. On Modal, CPU functions prepare FineWeb-Edu and generate samples. One H100 runs pretraining or SST-5 fine-tuning. The named Volume `cs336-llama-adaptation-artifacts` stores the tokenizer, token streams, checkpoints, and results across invocations.
 
 The repository's devcontainer, locked dependencies, and CPU CI are in place. Local verification covered preparation of the full dataset and checkpoint resume. First live preparation, CUDA image build, H100 timings, and actual Modal spend are pending.
 

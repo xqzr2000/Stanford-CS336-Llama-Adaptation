@@ -2,7 +2,7 @@
 
 Run these commands from the repository root in Codespaces. Replace app ID examples with the actual `ap-…` IDs. Use the same Modal workspace and environment throughout.
 
-## Day 1 · Set up and prepare TinyStories
+## Day 1 · Set up and prepare FineWeb-Edu
 
 ```bash
 git pull --ff-only
@@ -22,10 +22,10 @@ Save the app ID. Wait for Modal to start the app before closing Codespaces. On t
 
 ```bash
 m app logs ap-PREP_ID
-m volume get cs336-llama-adaptation-artifacts tinystories-v2/manifest.json -
+m volume get cs336-llama-adaptation-artifacts fineweb-edu-10bt/manifest.json -
 ```
 
-The manifest records the dataset revision, vocabulary size, tokenizer hash, and token counts. Rerunning preparation after completion reuses the prepared files.
+The manifest records the dataset revision, shard list, vocabulary size, tokenizer hash, and token counts. Rerunning preparation after completion reuses the prepared files. The logs show download and encoding time for each shard; record them in the Modal journal. Copy the training token count into the [cost estimate](Plan.md#cost-estimate) in place of the 2.5B estimate.
 
 ## Day 2 · Pilot the full-size model
 
@@ -45,7 +45,7 @@ The metrics file also holds `train_tokens_per_second`, the latest training loss,
 
 ## Days 3–5 · Start the main run, budget, and sample
 
-Put the pilot's `train_tokens_per_second` into the [cost estimate](Plan.md#cost-estimate) and choose the schedule length. The default is 15,000 steps. For a longer run, add the same `--schedule-steps N` to every pretraining command below. The checkpoint rejects a segment with a different schedule, warmup, batch setting, or peak learning rate.
+Put the pilot's `train_tokens_per_second` into the [cost estimate](Plan.md#cost-estimate) and choose the schedule length. The default is 150,000 steps, about one pass over the three default training shards. For a different length, add the same `--schedule-steps N` to every pretraining command below. The checkpoint rejects a segment with a different schedule, warmup, batch setting, or peak learning rate.
 
 Start the main run under the run ID `llama124m`. Once a pretraining app has finished, submit the next segment under the same run ID. `--target-step` is cumulative.
 
@@ -87,6 +87,8 @@ Read the latest pretraining and sentiment metrics, check which apps are still ru
 | Missing manifest or checkpoint | Check the app state and the selected workspace/environment. Read the prep or training logs and confirm the files were committed to the expected Volume before running the next stage. |
 | Startup looks stalled | Check whether Modal is building the image, waiting for resources, or initializing the job. Use the app ID to inspect logs before submitting a duplicate. |
 | Job failed with `No training progress` | The stall guard ended a job that completed no step or checkpoint for 15 minutes. Read the last log lines to see where it stopped, confirm the last committed metrics, then resubmit the same command. |
+| Preparation fails with HTTP 404 | The pinned FineWeb-Edu revision or shard name no longer resolves. Check `REVISION` and the shard names in `llama_lab/data.py` against the dataset's file list on Hugging Face. |
+| Preparation fails with HTTP 429 | Hugging Face rate-limited the anonymous download after four attempts. Wait a few minutes and rerun, or attach a Modal Secret holding `HF_TOKEN` to `prepare`. |
 | Run stopped before its target | Read the last committed metrics. When ready, submit the same run ID and cumulative target to resume. An interruption before the first checkpoint means the run starts again from random weights. |
 | Checkpoint configuration mismatch | Restore the original schedule, batch, and learning-rate settings. Use a new run ID if you intend to change the experiment. |
 | Writer lock remains after an interruption | Inspect it with `m dict items cs336-llama-adaptation-locks`. If **all** preparation, pretraining, and sentiment apps for this project have stopped and the lock is stale, clear it with `m dict clear cs336-llama-adaptation-locks`. |

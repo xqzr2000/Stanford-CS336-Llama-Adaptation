@@ -81,6 +81,23 @@ The walkthrough notebook moved into the repo at `notebooks/` and now covers ever
 
 **Still open.** Streaming the slice from Hugging Face, the T4 itself, Drive mounting, and downloading the real SST-5 files have not run yet.
 
+## Day 0 · November 14, 2026 · CS336_Colab track for TinyStories
+
+We added `CS336_Colab/`, a Colab track that follows the original CS336 Assignment 1: a 22.7M-parameter Transformer trained on TinyStories on a T4, with its own tokenizer, model, and AdamW in one notebook. It follows the layout of `Mario_Colab` in Mario_Ops: the notebook, a README, and the trained model committed after training.
+
+| Decision | Reason |
+| --- | --- |
+| Sweep the peak learning rate on the 40m profile (3e-4, 1e-3, 3e-3), then train the full profile at the best rate. | The learning rate matters most for the handout's 2.00 and 1.45 references, and each 40m run is short on a T4. |
+| Keep hand-written attention and add a `FAST_ATTENTION` switch with an equivalence check. | Writing attention is part of the assignment. The fused kernel avoids storing the 256 × 256 score matrices, the slowest part on a T4. |
+| Save every 1,000 iterations on the full run instead of 250. | A full checkpoint is about 272 MB, and writing one to Drive takes several seconds. |
+| Export FP16 weights with the tokenizer, about 46 MB. | The model fits in git under GitHub's 50 MB warning, and `GENERATE_FROM = "github"` can load it without Drive. |
+| Score the whole validation split when a run finishes. | The sampled windows during training are for comparing checkpoints. The final number covers every validation token. |
+| Allow `*.pt` in `CS336_Colab/`. | `.gitignore` excludes `*.pt` everywhere else. |
+
+**Checked.** Every mode ran end to end on CPU with a scaled-down model and a small stand-in corpus: a sweep including a deliberately divergent rate, a rerun that skipped finished and diverged rates, a full run paused at iteration 20 and resumed with fast attention, generation from Drive and from GitHub, and packaging. A full-size FP16 export measured 45.7 MB.
+
+**Still open.** The T4 itself, Drive, the TinyStories download, and the real throughput have not run yet.
+
 ## Entry template
 
 Append a dated entry above this template.

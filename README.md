@@ -1,6 +1,6 @@
 # Stanford CS336 Llama Adaptation
 
-Train one **123,489,024-parameter Llama-style language model from random weights** on TinyStories, then fine-tune a copy on the five-class SST-5 sentiment task. Codespaces runs the commands. Modal runs data preparation, pretraining, sampling, and fine-tuning. A 100-step pilot under its own run ID measures throughput before the main run starts.
+Train one **123,489,024-parameter Llama-style language model from random weights** on FineWeb-Edu, a corpus of educational web pages, then fine-tune a copy on the five-class SST-5 sentiment task. Codespaces runs the commands. Modal runs data preparation, pretraining, sampling, and fine-tuning. A 100-step pilot under its own run ID measures throughput before the main run starts.
 
 ## Project docs
 
@@ -35,10 +35,12 @@ m run --detach modal_app.py::prepare
 Save the **app ID** (`ap-…`) printed by Modal. You can close Codespaces once the app has started. Check progress with `m app list` or `m app logs ap-REPLACE_ME`. Wait for the preparation app to finish and confirm that the dataset manifest exists:
 
 ```bash
-m volume get cs336-llama-adaptation-artifacts tinystories-v2/manifest.json -
+m volume get cs336-llama-adaptation-artifacts fineweb-edu-10bt/manifest.json -
 ```
 
-Preparation uses CPU compute. It downloads the pinned TinyStoriesV2 GPT-4 train and validation files, fits byte-level BPE on the first 100,000 training stories, inserts end-of-story tokens, and writes packed train and validation streams to a Modal Volume. The tokenizer, source revision, and token counts are recorded in the manifest. A completed preparation can be run again and will reuse its artifacts.
+Preparation uses CPU compute. It reads the pinned `sample/10BT` subset of [FineWeb-Edu](https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu) from Hugging Face. It downloads one 2.15 GB Parquet shard at a time to the container's local disk, fits byte-level BPE on the first 100,000 documents, adds an end-of-text token after each document, appends the tokens to the packed stream on the Modal Volume, and deletes the shard. By default it uses shards 000–002 for training, about 2.5B tokens and 5 GB on the Volume. Validation uses the first 5M tokens of shard 013, which training never reads. `--train-shards` accepts 1–6. The tokenizer, revision, shard list, and token counts are recorded in the manifest. A completed preparation can be run again and will reuse its artifacts. To change the shard count afterwards, remove the dataset folder with `m volume rm -r cs336-llama-adaptation-artifacts fineweb-edu-10bt` first.
+
+The download is anonymous. Hugging Face limits anonymous downloads per IP address, and Modal containers can share outbound addresses, so the job retries rate-limit responses. If preparation still fails with HTTP 429, create a Modal Secret holding `HF_TOKEN`, attach it to `prepare` in `modal_app.py`, and run it again.
 
 ```bash
 m run --detach modal_app.py::pretrain --run-id pilot --target-step 100 --minutes 20
@@ -53,7 +55,7 @@ m volume get cs336-llama-adaptation-artifacts runs/pilot/metrics-000100.json -
 
 ## Start and resume the main run
 
-Use the pilot's throughput and the [cost estimate](docs/Plan.md#cost-estimate) to choose the length of the main run **before its first step**. The checkpoint stores the schedule length, warmup, batch settings, and peak learning rate, and a segment with different values is rejected. The default schedule is 15,000 steps, about 0.46 of one pass over the training tokens. For a longer run, add the same `--schedule-steps N` to every segment below, starting with the first.
+Use the pilot's throughput and the [cost estimate](docs/Plan.md#cost-estimate) to choose the length of the main run **before its first step**. The checkpoint stores the schedule length, warmup, batch settings, and peak learning rate, and a segment with different values is rejected. The default schedule is 150,000 steps, 2.46B processed tokens, about one pass over the default training data and about 20 tokens per parameter. For a different length, add the same `--schedule-steps N` to every segment below, starting with the first.
 
 Start the main run under a new run ID. Once an app has finished, submit the next segment with the **same run ID**. The target step is cumulative.
 
@@ -61,7 +63,7 @@ Start the main run under a new run ID. Once an app has finished, submit the next
 m run --detach modal_app.py::pretrain --run-id llama124m --target-step 1000 --minutes 90
 ```
 
-The first segment starts from random weights. On later segments, look for `resumed step=...` with the last saved step. The run saves `latest.pt` every 500 steps and at each planned stop. It saves model weights, optimizer state, batch sampling RNG state, validation loss, and the exact run settings. Small `metrics-*.json` files record validation loss, processed tokens, and peak allocated GPU memory. A new invocation resumes from the last committed checkpoint. Keep schedule, warmup, micro-batch, accumulation, and peak learning rate identical across segments. You can change the target step, runtime, and checkpoint interval. The default cosine schedule ends at step 15,000, or 245.76M processed tokens.
+The first segment starts from random weights. On later segments, look for `resumed step=...` with the last saved step. The run saves `latest.pt` every 2,000 steps and at each planned stop. It saves model weights, optimizer state, batch sampling RNG state, validation loss, and the exact run settings. Small `metrics-*.json` files record validation loss, processed tokens, and peak allocated GPU memory. A new invocation resumes from the last committed checkpoint. Keep schedule, warmup, micro-batch, accumulation, and peak learning rate identical across segments. You can change the target step, runtime, and checkpoint interval. The default cosine schedule ends at step 150,000, or 2.46B processed tokens.
 
 The example below targets step 5,000 (81.92M cumulative tokens). Set the target and runtime using your measured throughput and remaining budget. If an app reaches its time limit before the target, launch another segment with the same target.
 
@@ -77,14 +79,14 @@ Each run allows one pretraining writer. If a hard cancellation leaves a stale wr
 
 ## Sample stories and fine-tune sentiment
 
-Run sampling after a pretraining segment completes. It runs on CPU and prints and saves a JSON file with three prompts, their continuations, the checkpoint step, and sampling settings. Use the same settings at two checkpoint steps to see what changed.
+Run sampling after a pretraining segment completes. It runs on CPU and prints and saves a JSON file with three educational prompts, their continuations, the checkpoint step, and sampling settings. Use the same settings at two checkpoint steps to see what changed.
 
 ```bash
 m run modal_app.py::sample --run-id llama124m
 m run modal_app.py::sample --run-id llama124m --prompt "Nora found a key under the garden bench."
 ```
 
-Once your continuations show a coherent thread, fine-tune a copy of the checkpoint on SST-5. It uses a five-way classification head over the last unpadded token and updates the backbone and the head. The logs and metrics report dev accuracy by epoch and the dev accuracy of the training-set majority class.
+Once continuations stay on the prompt's topic in grammatical sentences, fine-tune a copy of the checkpoint on SST-5. It uses a five-way classification head over the last unpadded token and updates the backbone and the head. The logs and metrics report dev accuracy by epoch and the dev accuracy of the training-set majority class.
 
 ```bash
 m run --detach modal_app.py::sentiment --run-id llama124m --experiment sst5
@@ -111,6 +113,6 @@ m run --detach modal_app.py::sentiment --run-id llama124m --experiment sst5-seed
 
 ## Course adaptations
 
-- **Stanford CS336.** Build the decoder-only Transformer and training pipeline, train a new BPE tokenizer on TinyStories, and measure training throughput. This one-week version uses Hugging Face Tokenizers for BPE training and PyTorch for AdamW and scaled dot-product attention. [Stanford CS336](https://cs336.stanford.edu/) · [Assignment 1 materials](https://github.com/stanford-cs336/assignment1-basics)
-- **CMU 11-711 Fall 2026.** Implement a Llama-style architecture and apply the generation, validation, and SST-5 exercises to your own checkpoint. Use the project tokenizer and raw TinyStories files throughout. The CMU reference checkpoint uses its own tokenizer. This repo evaluates the pretrained model's generations and SST-5 fine-tuning using the project's vocabulary. [CMU Homework 1](https://cmu-anlp.org/assignments/01)
+- **Stanford CS336.** Build the decoder-only Transformer and training pipeline, train a new BPE tokenizer on web text, and measure training throughput. FineWeb-Edu stands in for the assignment's OpenWebText. This one-week version uses Hugging Face Tokenizers for BPE training and PyTorch for AdamW and scaled dot-product attention. [Stanford CS336](https://cs336.stanford.edu/) · [Assignment 1 materials](https://github.com/stanford-cs336/assignment1-basics)
+- **CMU 11-711 Fall 2026.** Implement a Llama-style architecture and apply the generation, validation, and SST-5 exercises to your own checkpoint. Use the project tokenizer and FineWeb-Edu throughout instead of the course's TinyStories data. The CMU reference checkpoint uses its own tokenizer. This repo evaluates the pretrained model's generations and SST-5 fine-tuning using the project's vocabulary. [CMU Homework 1](https://cmu-anlp.org/assignments/01)
 - **Architecture.** 12 decoder blocks, width 768, 12 query heads, 4 key/value heads, SwiGLU width 3,328, 16,384 vocabulary entries, and context length 256. RMSNorm, RoPE, bias-free projections, and tied input/output embeddings.

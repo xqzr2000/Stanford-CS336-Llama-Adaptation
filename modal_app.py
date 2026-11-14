@@ -8,7 +8,7 @@ from pathlib import Path
 import modal
 
 ROOT = Path("/artifacts")
-DATA = ROOT / "tinystories-v2"
+DATA = ROOT / "fineweb-edu-10bt"
 APP_NAME = "cs336-llama-adaptation"
 UV_VERSION = "0.13.6"
 MAX_MINUTES = 330
@@ -68,26 +68,28 @@ def stall_guard(seconds=STALL_MINUTES * 60):
         signal.signal(signal.SIGALRM, previous)
 
 
-@app.function(image=cpu_image, volumes={str(ROOT): volume}, cpu=4, memory=8192, timeout=7200)
-def prepare():
-    """Download the raw stories and write the tokenizer and packed data."""
+@app.function(
+    image=cpu_image, volumes={str(ROOT): volume}, cpu=8, memory=16384, timeout=3 * 60 * 60,
+)
+def prepare(train_shards: int = 3):
+    """Download FineWeb-Edu shards and write the tokenizer and packed token streams."""
     from llama_lab.data import prepare_data
     from llama_lab.model import ModelConfig
 
     with claim("data"):
-        manifest = prepare_data(DATA, ModelConfig().vocab_size)
+        manifest = prepare_data(DATA, ModelConfig().vocab_size, train_shards, scratch="/tmp/fineweb")
         volume.commit()
         print(manifest, flush=True)
 
 
 @app.function(
     image=gpu_image, gpu="H100", volumes={str(ROOT): volume},
-    cpu=4, memory=8192, timeout=(MAX_MINUTES + 30) * 60,
+    cpu=4, memory=24576, timeout=(MAX_MINUTES + 30) * 60,
 )
 def pretrain(
     run_id: str = "llama124m", target_step: int = 100, minutes: int = 20,
-    schedule_steps: int = 15_000, warmup: int = 200, micro_batch: int = 64,
-    accumulation: int = 1, peak_lr: float = 0.0003, checkpoint_every: int = 500,
+    schedule_steps: int = 150_000, warmup: int = 200, micro_batch: int = 64,
+    accumulation: int = 1, peak_lr: float = 0.0003, checkpoint_every: int = 2_000,
 ):
     """Create or resume a single pretraining run."""
     import torch
@@ -116,7 +118,7 @@ def sample(
     run_id: str = "llama124m", prompt: str = "", max_new: int = 96,
     temperature: float = 0.7, top_p: float = 0.9,
 ):
-    """Read the latest committed checkpoint and save a set of story samples."""
+    """Read the latest committed checkpoint and save a set of text samples."""
     import json
     import torch
 

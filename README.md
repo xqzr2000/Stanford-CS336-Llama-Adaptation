@@ -2,6 +2,8 @@
 
 Train one **123,489,024-parameter Llama-style language model from random weights** on FineWeb-Edu, a corpus of educational web pages, then fine-tune a copy on the five-class SST-5 sentiment task. Codespaces runs the commands. Modal runs data preparation, pretraining, and sampling. A Colab notebook explains the model, runs the code on a small slice, hosts the final model, and fine-tunes it on SST-5 on a T4. A 100-step pilot under its own run ID measures throughput before the main run starts.
 
+A second track, [CS336_Colab](CS336_Colab/), follows the original CS336 Assignment 1 on a Colab T4. It trains a 22.7M-parameter Transformer on TinyStories in one self-contained notebook, sweeps the learning rate, and commits the final model, metrics, and sample stories to that folder. [Open it in Colab](https://colab.research.google.com/github/xqzr2000/Stanford-CS336-Llama-Adaptation/blob/main/CS336_Colab/CS336_TinyStories_Training.ipynb).
+
 ## Project docs
 
 - [Plan](docs/Plan.md) covers the one-week schedule, course adaptations, cost estimate, and US$200 budget.
@@ -9,6 +11,7 @@ Train one **123,489,024-parameter Llama-style language model from random weights
 - [Learning progress](docs/Learning-Progress.md) records decisions, local checks, experiments, and fixes.
 - [Cloud walker — Modal](docs/cloud-walker-Modal.md) records cloud runs, billing, and lessons from 11-768.
 - [Colab companion notebook](notebooks/CS336_Llama_Project_Walkthrough.ipynb) · [open in Colab](https://colab.research.google.com/github/xqzr2000/Stanford-CS336-Llama-Adaptation/blob/main/notebooks/CS336_Llama_Project_Walkthrough.ipynb) walks through the math and runs everything except H100 pretraining.
+- [CS336_Colab](CS336_Colab/README.md) · [open in Colab](https://colab.research.google.com/github/xqzr2000/Stanford-CS336-Llama-Adaptation/blob/main/CS336_Colab/CS336_TinyStories_Training.ipynb) trains the Assignment 1 TinyStories model on a T4 and holds its results.
 
 ## Start from GitHub Codespaces
 

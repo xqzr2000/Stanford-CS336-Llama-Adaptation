@@ -58,6 +58,29 @@ We replaced TinyStories with the pinned `sample/10BT` subset of FineWeb-Edu, a s
 
 **Still open.** The FineWeb-Edu revision is pinned from the Hugging Face file listing, and the real download and tokenization have not run yet. The CPU tests cover Parquet reading, the validation cap, shard cleanup, and the manifest checks on a small synthetic dataset. FineWeb-Edu contains near-duplicate pages across crawls, so some validation documents may resemble training documents.
 
+## Day 0 · November 14, 2026 · Colab companion notebook
+
+The walkthrough notebook moved into the repo at `notebooks/` and now covers everything except H100 pretraining. It clones the repo at a chosen revision, `main` by default, and calls the same functions Modal runs.
+
+| Chapter | What it runs |
+| --- | --- |
+| 1 · From token IDs to logits | The model checked against the math for RMSNorm, RoPE, grouped-query attention, SwiGLU, and the loss. |
+| 2 · FineWeb-Edu on a slice | `prepare_data` on the first 2,000 documents of the pinned shards, with a 4,096-entry tokenizer. |
+| 3 · Training, small and large | The learning-rate schedule, `pretrain_model` on the slice with a small model including a resume, and the H100 run's metrics and cost. |
+| 4 · Host the final model | The exported weights, the project's sampling settings, and validation loss recomputed on the T4. |
+| 5 · SST-5 on the T4 | Fine-tuning a copy of the final model, or of the chapter-3 model in practice mode. |
+
+| Change | Reason |
+| --- | --- |
+| `precision` uses BF16 autocast only on GPUs with compute capability 8.0 or higher. | The T4 has no native BF16, so the repo now runs in FP32 there. The H100 path is unchanged. |
+| `load_for_eval` checks the tokenizer hash directly. | It no longer needs `train.bin` and the manifest, which Colab doesn't have. |
+| New `export` Modal job writes a `colab` folder with FP16 weights. | The weights take about 247 MB instead of the 1.48 GB checkpoint, which also holds AdamW state. |
+| SST-5 is planned on Colab's T4. | The job is small, and the Modal `sentiment` job stays as a fallback. |
+
+**Checked.** The whole notebook ran on CPU against this branch with a real full-size checkpoint and its export, synthetic Parquet shards in place of the Hugging Face download, and small synthetic SST-5 files. The practice model's validation loss fell from 8.33 to 5.31 over 300 steps, with a stop and resume at step 150.
+
+**Still open.** Streaming the slice from Hugging Face, the T4 itself, Drive mounting, and downloading the real SST-5 files have not run yet.
+
 ## Entry template
 
 Append a dated entry above this template.

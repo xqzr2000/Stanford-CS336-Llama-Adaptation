@@ -33,7 +33,10 @@ def windows(tokens, starts, context, device):
 
 
 def precision(device):
-    return torch.autocast("cuda", dtype=torch.bfloat16) if device.type == "cuda" else nullcontext()
+    """Use BF16 autocast on GPUs with native BF16 (A100, H100). Others, such as a T4, run in FP32."""
+    if device.type == "cuda" and torch.cuda.get_device_capability(device) >= (8, 0):
+        return torch.autocast("cuda", dtype=torch.bfloat16)
+    return nullcontext()
 
 
 def learning_rate(step, schedule_steps, warmup, peak):
@@ -192,9 +195,24 @@ def pretrain_model(
 
 
 def restore_model(path: Path, device):
+    """Load a training checkpoint or a weights export as an FP32 model."""
     checkpoint = load_checkpoint(path, "cpu")
     model = Llama(ModelConfig(**checkpoint["settings"]["model"]))
     model.load_state_dict(checkpoint["model"])
     metadata = {k: checkpoint[k] for k in ("step", "tokens", "val_loss")}
     metadata["tokenizer_sha256"] = checkpoint["settings"]["data"]["tokenizer_sha256"]
-    return model.to(device), metadata
+    return model.float().to(device), metadata
+
+
+def export_weights(checkpoint_path: Path, output: Path, dtype=torch.float16):
+    """Write the model weights and run settings without optimizer or sampler state."""
+    checkpoint = load_checkpoint(checkpoint_path, "cpu")
+    weights = {}
+    for name, tensor in checkpoint["model"].items():
+        weights[name] = tensor.to(dtype)
+        if not torch.isfinite(weights[name]).all():
+            raise ValueError(f"{name} does not fit in {dtype}. Export with dtype=torch.float32.")
+    payload = {k: checkpoint[k] for k in ("settings", "step", "tokens", "val_loss")}
+    payload["model"] = weights
+    atomic_save(payload, output)
+    return output

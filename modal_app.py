@@ -138,6 +138,30 @@ def sample(
     print(f"saved {path}", flush=True)
 
 
+@app.function(image=cpu_image, volumes={str(ROOT): volume}, cpu=2, memory=6144, timeout=900)
+def export(run_id: str = "llama124m"):
+    """Write a Colab folder: FP16 weights, tokenizer, manifest, validation tokens and metrics."""
+    import json
+    import shutil
+
+    from llama_lab.data import write_json
+    from llama_lab.train import export_weights, load_checkpoint
+
+    run_root = ROOT / "runs" / safe_id(run_id)
+    bundle = run_root / "colab"
+    step = load_checkpoint(run_root / "latest.pt", "cpu")["step"]
+    shutil.rmtree(bundle, ignore_errors=True)
+    bundle.mkdir()
+    export_weights(run_root / "latest.pt", bundle / f"weights-{step:06d}.pt")
+    for name in ("tokenizer.json", "manifest.json", "valid.bin"):
+        shutil.copy(DATA / name, bundle / name)
+    metrics = [json.loads(path.read_text()) for path in sorted(run_root.glob("metrics-*.json"))]
+    write_json(bundle / "metrics.json", {"run_id": run_id, "checkpoints": metrics})
+    volume.commit()
+    for path in sorted(bundle.iterdir()):
+        print(f"{path} bytes={path.stat().st_size:,}", flush=True)
+
+
 @app.function(
     image=gpu_image, gpu="H100", volumes={str(ROOT): volume},
     cpu=4, memory=8192, timeout=90 * 60,

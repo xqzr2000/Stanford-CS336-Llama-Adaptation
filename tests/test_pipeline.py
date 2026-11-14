@@ -10,7 +10,7 @@ from llama_lab import data as data_module
 from llama_lab.data import END, prepare_data, read_manifest
 from llama_lab.evaluate import SentimentClassifier, finetune_sst5, load_for_eval, sample_stories
 from llama_lab.model import Llama, ModelConfig
-from llama_lab.train import load_checkpoint, pretrain_model
+from llama_lab.train import export_weights, load_checkpoint, pretrain_model
 
 CPU = torch.device("cpu")
 DOCUMENTS = (
@@ -135,3 +135,32 @@ def test_stall_guard_stops_a_hung_job():
     with stall_guard(seconds=1) as heartbeat:
         heartbeat()
     time.sleep(1.5)
+
+
+def test_weights_export_loads_with_only_the_tokenizer(tiny_data, tmp_path):
+    config, data, manifest = tiny_data
+    run = tmp_path / "run"
+    settings = dict(
+        schedule_steps=2, warmup=1, micro_batch=2, accumulation=1,
+        peak_lr=1e-3, minutes=10, checkpoint_every=1, log_every=1,
+    )
+    pretrain_model(config, data, run, manifest, CPU, target_step=1, **settings)
+    exported = export_weights(run / "latest.pt", tmp_path / "weights.pt")
+    payload = load_checkpoint(exported, CPU)
+    assert "optimizer" not in payload and "batch_rng" not in payload
+    assert all(t.dtype == torch.float16 for t in payload["model"].values())
+    assert exported.stat().st_size < (run / "latest.pt").stat().st_size / 4
+
+    colab = tmp_path / "colab"
+    colab.mkdir()
+    shutil.copy(data / "tokenizer.json", colab / "tokenizer.json")
+    full, _, _ = load_for_eval(run / "latest.pt", colab, CPU)
+    light, _, metadata = load_for_eval(exported, colab, CPU)
+    assert metadata["step"] == 1
+    assert next(light.parameters()).dtype == torch.float32
+    tokens = torch.tensor([[1, 2, 3, 4]])
+    torch.testing.assert_close(light(tokens), full(tokens), atol=1e-3, rtol=1e-3)
+
+    (colab / "tokenizer.json").write_text((colab / "tokenizer.json").read_text().replace(END, "<|x|>"))
+    with pytest.raises(ValueError, match="do not match"):
+        load_for_eval(exported, colab, CPU)

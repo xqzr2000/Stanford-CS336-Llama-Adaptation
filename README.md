@@ -1,6 +1,6 @@
 # Stanford CS336 Llama Adaptation
 
-Train one **123,489,024-parameter Llama-style language model from random weights** on FineWeb-Edu, a corpus of educational web pages, then fine-tune a copy on the five-class SST-5 sentiment task. Codespaces runs the commands. Modal runs data preparation, pretraining, sampling, and fine-tuning. A 100-step pilot under its own run ID measures throughput before the main run starts.
+Train one **123,489,024-parameter Llama-style language model from random weights** on FineWeb-Edu, a corpus of educational web pages, then fine-tune a copy on the five-class SST-5 sentiment task. Codespaces runs the commands. Modal runs data preparation, pretraining, and sampling. A Colab notebook explains the model, runs the code on a small slice, hosts the final model, and fine-tunes it on SST-5 on a T4. A 100-step pilot under its own run ID measures throughput before the main run starts.
 
 ## Project docs
 
@@ -8,6 +8,7 @@ Train one **123,489,024-parameter Llama-style language model from random weights
 - [Runbook](docs/Runbook.md) has the Codespaces and Modal commands, checkpoints to verify, and recovery steps.
 - [Learning progress](docs/Learning-Progress.md) records decisions, local checks, experiments, and fixes.
 - [Cloud walker — Modal](docs/cloud-walker-Modal.md) records cloud runs, billing, and lessons from 11-768.
+- [Colab companion notebook](notebooks/CS336_Llama_Project_Walkthrough.ipynb) · [open in Colab](https://colab.research.google.com/github/xqzr2000/Stanford-CS336-Llama-Adaptation/blob/main/notebooks/CS336_Llama_Project_Walkthrough.ipynb) walks through the math and runs everything except H100 pretraining.
 
 ## Start from GitHub Codespaces
 
@@ -73,11 +74,11 @@ m run --detach modal_app.py::pretrain --run-id llama124m --target-step 5000 --mi
 
 One invocation accepts at most 330 minutes, and Modal stops the function 30 minutes after that. The job also fails itself if no optimizer step or checkpoint completes for 15 minutes. In both cases the last committed checkpoint remains, and the same command resumes from it.
 
-Estimate **GPU hours ≈ remaining tokens ÷ measured tokens/sec ÷ 3,600**. Include startup, checkpointing, evaluation, and CPU/RAM when setting a budget. Modal lists the H100 at approximately **US$3.95 per GPU-hour**. Use **US$200 as the total project cap**, with a working allocation of $20 for preparation and pilot, $130 for pretraining, $20 for SST-5, and $30 in reserve. Check workspace billing before each new segment. Modal's workspace limits cover all projects in the current billing cycle, and the per-invocation runtime applies to each execution attempt. Stop a running app from the Modal dashboard or with `m app stop ap-REPLACE_ME`. [Modal pricing](https://modal.com/pricing) · [Workspace budgets](https://modal.com/docs/guide/budgets)
+Estimate **GPU hours ≈ remaining tokens ÷ measured tokens/sec ÷ 3,600**. Include startup, checkpointing, evaluation, and CPU/RAM when setting a budget. Modal lists the H100 at approximately **US$3.95 per GPU-hour**. Use **US$200 as the total project cap**, with a working allocation of $20 for preparation and pilot, $130 for pretraining, $20 for SST-5 on Modal if Colab is unavailable, and $30 in reserve. Check workspace billing before each new segment. Modal's workspace limits cover all projects in the current billing cycle, and the per-invocation runtime applies to each execution attempt. Stop a running app from the Modal dashboard or with `m app stop ap-REPLACE_ME`. [Modal pricing](https://modal.com/pricing) · [Workspace budgets](https://modal.com/docs/guide/budgets)
 
 Each run allows one pretraining writer. If a hard cancellation leaves a stale writer lock, inspect it with `m dict items cs336-llama-adaptation-locks`. After confirming **all preparation, pretraining, and sentiment apps for this project have stopped**, run `m dict clear cs336-llama-adaptation-locks` and resume the run. The lock dictionary contains only writer IDs.
 
-## Sample stories and fine-tune sentiment
+## Sample continuations
 
 Run sampling after a pretraining segment completes. It runs on CPU and prints and saves a JSON file with three educational prompts, their continuations, the checkpoint step, and sampling settings. Use the same settings at two checkpoint steps to see what changed.
 
@@ -86,17 +87,26 @@ m run modal_app.py::sample --run-id llama124m
 m run modal_app.py::sample --run-id llama124m --prompt "Nora found a key under the garden bench."
 ```
 
-Once continuations stay on the prompt's topic in grammatical sentences, fine-tune a copy of the checkpoint on SST-5. It uses a five-way classification head over the last unpadded token and updates the backbone and the head. The logs and metrics report dev accuracy by epoch and the dev accuracy of the training-set majority class.
+## Take the model to Colab
+
+Export the latest checkpoint as a Colab folder and download it. The export runs on CPU. It writes FP16 weights (about 250 MB instead of the 1.48 GB checkpoint), `tokenizer.json`, `manifest.json`, `valid.bin`, and `metrics.json` with every checkpoint's metrics.
+
+```bash
+m run modal_app.py::export --run-id llama124m
+m volume get cs336-llama-adaptation-artifacts runs/llama124m/colab llama124m-colab
+```
+
+Upload `llama124m-colab` to Google Drive and [open the notebook in Colab](https://colab.research.google.com/github/xqzr2000/Stanford-CS336-Llama-Adaptation/blob/main/notebooks/CS336_Llama_Project_Walkthrough.ipynb) on a T4. Chapter 4 loads the weights, samples the three project prompts with the same settings as the `sample` job, and recomputes validation loss. On a T4 the repo runs in FP32, because the T4 has no native BF16.
+
+## Fine-tune sentiment on the T4
+
+Once continuations stay on the prompt's topic in grammatical sentences, fine-tune a copy of the model on SST-5 in chapter 5 of the notebook with `SST5_MODEL = "final"`. It uses a five-way classification head over the last unpadded token and updates the backbone and the head. The output reports dev accuracy by epoch and the dev accuracy of the training-set majority class, and saves `best.pt` and `metrics.json` to `sst5-colab-seed<seed>` in the Drive folder. Change the seed in the notebook to run a second seed.
+
+The Modal `sentiment` job runs the same fine-tuning on an H100 if Colab is unavailable:
 
 ```bash
 m run --detach modal_app.py::sentiment --run-id llama124m --experiment sst5
 m volume get cs336-llama-adaptation-artifacts runs/llama124m/sentiment/sst5/metrics.json -
-```
-
-Run a second seed if time allows. Both commands load the same pretraining checkpoint if you launch them before the next pretraining segment. Sentiment weights go to `sentiment/<experiment>/best.pt` inside the run folder, leaving the base checkpoint available for generation and resume.
-
-```bash
-m run --detach modal_app.py::sentiment --run-id llama124m --experiment sst5-seed337 --seed 337
 ```
 
 ## One week, about an hour a day
@@ -108,7 +118,7 @@ m run --detach modal_app.py::sentiment --run-id llama124m --experiment sst5-seed
 | 3 | Choose the schedule length from the pilot's throughput. Start the main run and train to step 1,000. |
 | 4 | Sample stories and launch the next segment within the remaining budget. |
 | 5 | Compare samples and validation loss. Continue pretraining if useful. |
-| 6 | Run SST-5 fine-tuning and collect dev accuracy and the majority-class baseline. |
+| 6 | Export the model to Colab. Run SST-5 fine-tuning on the T4 and collect dev accuracy and the majority-class baseline. |
 | 7 | Record steps, tokens, validation loss, story samples, SST-5 results, and Modal spend. |
 
 ## Course adaptations

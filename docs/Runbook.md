@@ -62,7 +62,16 @@ m run modal_app.py::sample --run-id llama124m --max-new 96 --temperature 0.7 --t
 
 Use the same prompts and settings after later segments. Sampling prints the text and stores a JSON record in `runs/llama124m`. Keep the checkpoint step with any excerpts copied into the learning log.
 
-## Day 6 · Fine-tune on SST-5
+## Day 6 · Export to Colab and fine-tune on SST-5
+
+```bash
+m run modal_app.py::export --run-id llama124m
+m volume get cs336-llama-adaptation-artifacts runs/llama124m/colab llama124m-colab
+```
+
+The export reads the latest committed checkpoint and replaces any earlier `colab` folder for the run. Upload `llama124m-colab` to Google Drive, [open the notebook in Colab](https://colab.research.google.com/github/xqzr2000/Stanford-CS336-Llama-Adaptation/blob/main/notebooks/CS336_Llama_Project_Walkthrough.ipynb) with a T4 runtime, set `MODEL_FOLDER` and `MOUNT_DRIVE`, and run chapters 4 and 5 with `SST5_MODEL = "final"`. Results are saved to `sst5-colab-seed<seed>` in the Drive folder.
+
+If Colab is unavailable, the same fine-tuning runs on Modal:
 
 ```bash
 m run --detach modal_app.py::sentiment --run-id llama124m --experiment sst5
@@ -70,7 +79,7 @@ m app logs ap-SST5_ID
 m volume get cs336-llama-adaptation-artifacts runs/llama124m/sentiment/sst5/metrics.json -
 ```
 
-The job reads the latest committed pretraining checkpoint when it starts. Record the source step from the metrics, the seed, accuracy by epoch, and the majority-class baseline. The best classifier checkpoint is saved under the experiment directory. If you repeat with seed 337, choose a fresh experiment name and keep the source checkpoint fixed for the comparison.
+Either way, fine-tuning starts from the latest committed pretraining checkpoint. Record the source step from the metrics, the seed, accuracy by epoch, and the majority-class baseline. The best classifier checkpoint is saved under the experiment directory. If you repeat with seed 337, choose a fresh experiment name and keep the source checkpoint fixed for the comparison.
 
 ```bash
 m run --detach modal_app.py::sentiment --run-id llama124m --experiment sst5-seed337 --seed 337

@@ -1,5 +1,6 @@
 """Sample continuations and adapt a pretrained checkpoint to five-way SST-5."""
 
+import hashlib
 import json
 from collections import Counter
 from pathlib import Path
@@ -10,7 +11,7 @@ from torch import nn
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
 
-from llama_lab.data import END, PAD, download, read_manifest, write_json
+from llama_lab.data import END, PAD, download, write_json
 from llama_lab.train import SEED, atomic_save, precision, restore_model
 
 PROMPTS = (
@@ -22,10 +23,12 @@ SST_REVISION = "e51bdcd8cd3a30da231967c1a249ba59361279a3"
 
 
 def load_for_eval(checkpoint_path, data_root, device):
+    """Load a checkpoint or weights export with the tokenizer.json in data_root."""
+    tokenizer_path = data_root / "tokenizer.json"
     model, metadata = restore_model(checkpoint_path, device)
-    if metadata["tokenizer_sha256"] != read_manifest(data_root)["tokenizer_sha256"]:
-        raise ValueError("Checkpoint and tokenizer do not match.")
-    tokenizer = Tokenizer.from_file(str(data_root / "tokenizer.json"))
+    if hashlib.sha256(tokenizer_path.read_bytes()).hexdigest() != metadata["tokenizer_sha256"]:
+        raise ValueError("Checkpoint and tokenizer do not match. Use the tokenizer from the same dataset.")
+    tokenizer = Tokenizer.from_file(str(tokenizer_path))
     return model, tokenizer, metadata
 
 

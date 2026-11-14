@@ -23,7 +23,7 @@ Allow **one week at about one hour per day** in Codespaces. Detached Modal jobs 
 | 3 | Fill in the cost estimate from the pilot's throughput and choose the schedule length. Start the main run toward step 1,000. | The chosen `--schedule-steps`, the first main-run checkpoint, and the updated cost estimate. |
 | 4 | Generate samples with fixed prompts and settings. Start the next detached segment if the measurements support it. | Samples with checkpoint step, sampling settings, and planned target. |
 | 5 | Review held-out loss and sample quality. Choose the pretraining checkpoint for SST-5. | Loss across checkpoints and examples that show both successes and failures. |
-| 6 | Fine-tune on SST-5 and collect development metrics. Repeat with a second seed if time allows. | Source checkpoint step, seed, accuracy by epoch, and majority baseline. |
+| 6 | Export the model to Colab. Fine-tune on SST-5 on the T4 and collect development metrics. Repeat with a second seed if time allows. | Source checkpoint step, seed, accuracy by epoch, and majority baseline. |
 | 7 | Summarize the results, remaining questions, and actual Modal spend. | Final checkpoint step, processed tokens, loss, sample excerpts, SST-5 result, and billing total. |
 
 The pilot's target is step 100, about 1.64M processed tokens at the default batch size. It runs under the run ID `pilot`, and its checkpoint is used for measurement only. Start the main run only after a committed pilot checkpoint and usable throughput measurements are available. Keep the prompts and decoding settings fixed when comparing checkpoints. For sample quality, look for grammatical sentences that stay on the prompt's topic. Expect fluent but often factually wrong text from a model this size. Validation loss on FineWeb-Edu is higher than on TinyStories and the two are not comparable.
@@ -49,7 +49,7 @@ These figures cover training steps only. Add the following.
 
 - **Checkpoints.** Each one runs validation, writes about 1.5 GB, and commits the Volume. The default interval of 2,000 steps gives 75 checkpoints over 150,000 steps. Read `validation_and_save_seconds` in the metrics and `checkpoint_seconds` in the log. If checkpoints take a large share of the time, raise `--checkpoint-every`. It can change between segments.
 - **Startup.** Each segment pays for container start, reading about 5 GB of tokens from the Volume, and loading the checkpoint. Allow a few minutes of H100 time per segment, about $0.30. A 150,000-step run needs at least one resume at 330 minutes per segment.
-- **Data preparation.** 8 CPU cores and 16 GiB cost about $0.51 per hour. Downloading about 7 GB and tokenizing 2.5B tokens should take under an hour, so well under $1. Sampling runs on CPU at about $0.25 per hour. The pilot and each SST-5 run are a few minutes of H100 time each.
+- **Data preparation.** 8 CPU cores and 16 GiB cost about $0.51 per hour. Downloading about 7 GB and tokenizing 2.5B tokens should take under an hour, so well under $1. Sampling runs on CPU at about $0.25 per hour. The pilot is a few minutes of H100 time. SST-5 runs on Colab's T4 at no Modal cost.
 - **Hosting the data.** Hugging Face downloads are free. Data coming into Modal is not billed as egress. The Volume holds about 5 GB of tokens plus a 1.5 GB checkpoint per run, far below the 1 TiB of Volume storage Modal includes each month. Above that, storage is $0.09 per GiB-month. Raw shards are deleted after encoding, so they never reach the Volume. Reading results back with `m volume get` counts as egress, but metrics and samples are a few kilobytes against 1 TiB included.
 
 **Worst case for a stuck job.** A job that stops making progress fails itself after 15 minutes, about $1. If that guard does not fire, Modal's function timeout ends the job after 6 hours, about $25.
@@ -62,7 +62,7 @@ At 100k tokens/s the default schedule uses about $30 of the $130 pretraining all
 | --- | ---: |
 | Data preparation and pilot | $20 |
 | Main pretraining | $130 |
-| SST-5 | $20 |
+| SST-5 (Modal fallback; planned on Colab) | $20 |
 | Reruns and overhead | $30 |
 | **Total** | **$200** |
 

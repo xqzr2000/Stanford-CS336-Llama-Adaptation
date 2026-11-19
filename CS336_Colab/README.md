@@ -1,117 +1,64 @@
-# CS336_Colab
+# CS336 Colab
 
-**Train the Stanford CS336 Assignment 1 TinyStories model on Google Colab's T4 GPU**
+This is the Stanford CS336 Assignment 1 track of the project. We trained a byte-level BPE tokenizer and a 22.7M-parameter Transformer from random weights on TinyStories using a Google Colab T4. The repository's [Modal track](../llama_lab/) trains a 124M-parameter Llama-style model on FineWeb-Edu.
 
-This folder is the **Colab track** of the project. It holds one self-contained notebook that follows CS336 Assignment 1. The notebook trains a byte-level BPE tokenizer and a 22.7M-parameter Transformer on TinyStories from random weights, and saves its checkpoints to Google Drive so separate sessions chain together. It finishes by exporting a model small enough to commit here.
+- [Trained notebook with saved outputs](CS336_TinyStories_Trained.ipynb) · [Open in Colab](https://colab.research.google.com/github/xqzr2000/Stanford-CS336-Llama-Adaptation/blob/main/CS336_Colab/CS336_TinyStories_Trained.ipynb)
+- [Original training notebook](CS336_TinyStories_Training.ipynb)
 
-Everything runs in the cloud. A browser and a Google account are enough. The repository's other track trains a 124M Llama on FineWeb-Edu with Modal H100s and the code in `llama_lab/`.
+## Training results
 
-[**Open the notebook in Colab**](https://colab.research.google.com/github/xqzr2000/Stanford-CS336-Llama-Adaptation/blob/main/CS336_Colab/CS336_TinyStories_Training.ipynb)
+Each sweep run processed 40.96 million tokens. Of the five peak learning rates tested, `3e-3` gave the lowest full-split validation loss. We used that rate for a fresh full-budget run.
 
----
-
-## What's in this folder
-
-```text
-CS336_Colab/
-├─ CS336_TinyStories_Training.ipynb   # Complete notebook: data and tokenizer, model, AdamW,
-|                                     # learning-rate sweep, full run, generation, packaging.
-|
-├─ README.md                          # This file.
-|
-│  Added after training:
-├─ model.pt                           # FP16 inference export: weights, architecture, tokenizer,
-|                                     # and validation results (about 46 MB).
-├─ metrics.json                       # Run settings, training and validation history,
-|                                     # and the full-split validation loss.
-├─ learning_curves.png                # Training and validation loss of the full run.
-├─ lr_sweep.json · lr_sweep.png       # 40m learning-rate sweep comparison.
-└─ samples.md                         # Stories for three fixed prompts with sampling settings.
-```
-
-The notebook writes all of these files to `CS336_TinyStories/CS336_Colab_upload/` in Drive (section 11). Commit the notebook with its outputs alongside them.
-
----
-
-## The model
-
-| | |
-| --- | --- |
-| Architecture | Pre-norm decoder: RMSNorm, RoPE, causal multi-head attention, SwiGLU |
-| Size | 4 layers, width 512, 16 heads, feed-forward 1,344, untied embeddings: 22,696,448 parameters |
-| Tokenizer | Byte-level BPE, 10,000 entries, trained on the TinyStoriesV2-GPT4 training split |
-| Context | 256 tokens |
-| Optimizer | AdamW written in the notebook, β = (0.9, 0.95), weight decay 0.1, gradient clipping at 1.0 |
-| Schedule | 5% linear warmup, cosine decay to 10% of the peak learning rate |
-| Batch | 32 sequences × 256 tokens per iteration |
-| Precision on a T4 | FP16 autocast with gradient scaling; weights and optimizer state in FP32 |
-
-Attention is hand-written, as the assignment asks. `FAST_ATTENTION = True` switches training to PyTorch's fused kernel for speed, and section 3 of the notebook checks that both paths give the same output.
-
----
-
-## Training plan
-
-| Step | `MODE` | Run | Tokens | Estimated T4 time |
-| --- | --- | --- | ---: | ---: |
-| 1 | `"sweep"` | `40m` profile at peak LR 3e-4, 1e-3 and 3e-3 | 40,960,000 each | about 40–90 min in total |
-| 2 | `"train"` | `full` profile at the sweep's best LR | 327,680,000 | about 2–4 h |
-| 3 | `"generate"` | Stories and packaging | — | minutes |
-
-The first session also spends 15–25 minutes downloading TinyStories, training the tokenizer, and encoding both splits; later sessions reuse the token files from Drive. The times are estimates from the model's arithmetic and memory traffic. The notebook prints the measured tokens per second and remaining time every 50 iterations.
-
-The handout's references are a validation loss of **2.00** for the 40M-token run and **1.45** for the tuned full run.
-
-### Results
-
-_To be filled in after training._
-
-| Run | Peak LR | Full-split validation loss | Perplexity | T4 time |
+| Run | Peak LR | Tokens processed | Sampled validation loss | Full-split validation loss |
 | --- | ---: | ---: | ---: | ---: |
-| 40m sweep | 3e-4 | | | |
-| 40m sweep | 1e-3 | | | |
-| 40m sweep | 3e-3 | | | |
-| full | | | | |
+| 40M sweep | `3e-4` | 40.96M | 1.9418 | 1.8831 |
+| 40M sweep | `1e-3` | 40.96M | 1.7303 | 1.6774 |
+| 40M sweep | `3e-3` | 40.96M | 1.7035 | 1.6544 |
+| 40M sweep | `5e-3` | 40.96M | 1.8117 | 1.7569 |
+| 40M sweep | `7e-3` | 40.96M | 1.8797 | 1.8271 |
+| Full run | `3e-3` | **327.68M** | **1.4466** | **1.4099** |
 
----
+The full run finished 40,000 optimizer steps with a full-split perplexity of **4.10**. The orange line in the plot shows cross-entropy on the same 512 held-out windows at each evaluation. It ends just below the CS336 handout's 1.45 reference. The full-split score comes from a separate evaluation at the end of training.
 
-## Using the supplied model: `model.pt`
+![Training and sampled validation loss over 327.68 million tokens](runs/learning_curves.png)
 
-### Option A: just generate stories
+The [run metrics](runs/metrics.json) include the configuration and complete loss history. The FP16 inference export, `model.pt`, is distributed through [GitHub Releases](https://github.com/xqzr2000/Stanford-CS336-Llama-Adaptation/releases) under the tag `tinystories-v1`.
 
-1. Open the notebook in Colab. A CPU runtime is enough.
-2. In section 1, set `MODE = "generate"` and `GENERATE_FROM = "github"`.
-3. Run all cells. The notebook downloads `model.pt` from this folder, skips the dataset and training, and prints stories. Change `PROMPT` in section 10 to try your own opening.
+## What changed in the generated stories
 
-To use a copy in Drive instead, put `model.pt` in `CS336_TinyStories/runs/full-lr<rate>/`, for example `full-lr1e-03`. Then set `GENERATE_FROM = "drive"`, `PROFILE = "full"`, and `PEAK_LR` to that rate.
+Both models continued the same prompt about a little robot finding a blue kite at the same peak learning rate of `3e-3`. The sweep sample repeats itself and drifts through a bird, a balloon, and an unexplained angel. The full-run sample keeps the robot and the girl at the center of the story and follows a clear sequence where she loses her kite, the robot retrieves it from a tree, and they become friends. It still has a local continuity slip when the robot takes a kite before going to look for it.
 
-### Option B: train it yourself
+See Section 12 of the [trained notebook](CS336_TinyStories_Trained.ipynb) for both stories and the side-by-side analysis. Section 12 labels the final sample “200M.” The same story appears in Section 10, where the output identifies the completed 40,000-step checkpoint. With 8,192 tokens per step, that run processed 327.68 million tokens.
 
-1. Open the notebook in Colab and select **Runtime → Change runtime type → T4 GPU**.
-2. Leave `MODE = "sweep"` and run all cells. Mount Drive when prompted. Each rate in `SWEEP_LRS` trains a 40m run, and the summary names the best rate.
-3. Set `MODE = "train"`, `PROFILE = "full"`, and `PEAK_LR` to that rate. Run all cells again.
-4. If the runtime disconnects, reopen the notebook with the same settings and run all cells. Training resumes from the last checkpoint, and finished sweep rates are skipped.
+## Model and training settings
 
-`model.pt` holds FP16 weights without optimizer state, so it can't resume training. Resuming uses the full checkpoints in Drive.
+| Setting | Value |
+| --- | --- |
+| Architecture | Pre-norm decoder with RMSNorm, RoPE, causal multi-head attention, and SwiGLU |
+| Size | 22,696,448 parameters, 4 layers, width 512, 16 heads, feed-forward width 1,344, untied embeddings |
+| Tokenizer | 10,000-entry byte-level BPE trained on the TinyStoriesV2-GPT4 training split |
+| Context and batch | 256 tokens, 32 sequences per optimizer step |
+| Optimizer | AdamW with β = (0.9, 0.95), weight decay 0.1, and gradient clipping at 1.0 |
+| Schedule | 5% linear warmup, then cosine decay to 10% of the peak learning rate |
+| T4 precision | FP16 autocast with gradient scaling, with FP32 training weights and optimizer state |
 
-### What lands in your Google Drive folder
+The notebook includes a hand-written attention implementation. `FAST_ATTENTION = True` uses PyTorch's fused attention for training, and the notebook checks that both implementations produce the same output.
 
-```text
-/content/drive/MyDrive/CS336_TinyStories/
-├─ data/tinystories-f54c09fd-bytebpe10000-v1/
-|  ├─ tokenizer.json
-|  ├─ train-<tokenizer hash>.bin          # uint16 token IDs, about 1.1 GB
-|  └─ valid-<tokenizer hash>.bin
-├─ runs/
-|  ├─ 40m-lr3e-04/ · 40m-lr1e-03/ · 40m-lr3e-03/
-|  ├─ full-lr<best>/
-|  |  ├─ checkpoint-*.pt                  # resumable, about 272 MB each; the two latest are kept
-|  |  ├─ model.pt                         # FP16 inference export
-|  |  ├─ metrics.json
-|  |  └─ learning_curves.png
-|  ├─ lr_sweep.json
-|  └─ lr_sweep.png
-└─ CS336_Colab_upload/                     # the files to commit to this folder
-```
+## Generate stories in Colab
 
-Allow about 3 GB of free Drive space.
+1. Download `model.pt` from the `tinystories-v1` release once it is published.
+2. Open the trained notebook in Colab. A CPU runtime is enough. Upload `model.pt` through the Files sidebar so it is available at `/content/model.pt`.
+3. In Section 1, set `MODE = "generate"` and `GENERATE_FROM = "local"`. Keep `LOCAL_MODEL_PATH = Path("/content/model.pt")`, or set it to the upload path you used.
+4. Run the notebook. Generation mode skips the dataset, tokenizer training, and model training. Change `PROMPT` in Section 10 to try your own opening.
+
+If you have the export in Drive at `MyDrive/CS336_TinyStories/runs/full-lr3e-03/model.pt`, use `MODE = "generate"`, `GENERATE_FROM = "drive"`, `PROFILE = "full"`, and `PEAK_LR = 3e-3`.
+
+## Reproduce the full run on a T4
+
+1. Open the trained notebook in Colab and select **Runtime → Change runtime type → T4 GPU**.
+2. Use `MODE = "train"`, `PROFILE = "full"`, and `PEAK_LR = 3e-3`. Run from the top and mount Drive when prompted. The first session prepares the tokenizer and token files, which later sessions reuse.
+3. After a disconnect, run from the top again with the same settings. The training loop saves a checkpoint about once an hour and keeps the newest two. It tries the older checkpoint if the newest one is unreadable.
+
+The final model export contains FP16 weights, the architecture configuration, the tokenizer, and validation results. Resuming training requires the Drive checkpoints, which also store the optimizer and training state.
+
+The run writes its checkpoints, export, metrics, and plot to `MyDrive/CS336_TinyStories/runs/full-lr3e-03/`. The shared tokenizer and encoded splits live under `MyDrive/CS336_TinyStories/data/`. Allow about 3 GB of free Drive space.

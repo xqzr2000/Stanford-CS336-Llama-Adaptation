@@ -98,6 +98,16 @@ We added `CS336_Colab/`, a Colab track that follows the original CS336 Assignmen
 
 **Still open.** The T4 itself, Drive, the TinyStories download, and the real throughput have not run yet.
 
+## November 17–18, 2026 · Completed the TinyStories run and published the model
+
+We ran a two-round learning-rate sweep on a Colab T4. Each run processed 40.96M tokens. Of the five rates we tried (`3e-4`, `1e-3`, `3e-3`, `5e-3`, `7e-3`), `3e-3` gave the lowest full-split validation loss, **1.6544**. We started the full run from random weights with that peak rate and a schedule sized for 40,000 steps.
+
+The sweep's frequent checkpoints took up about 10 GB in Drive. For the full run, we switched to hourly saves with two retained checkpoints. The notebook resumes from the newest readable checkpoint and can fall back to the previous one. It also reuses the saved BPE tokenizer and encoded token files, so reopening Colab with the same run settings skips data preparation and the sweep.
+
+The full run processed **327.68M tokens** and reached **1.4466** on the fixed 512-window validation sample and **1.4099** on the full split, for a perplexity of **4.10**. In the saved blue-kite comparison, the sweep sample drifts between characters while the full-run sample keeps the robot and the girl in a story with a clear problem and resolution. [Trained notebook, Section 12](../CS336_Colab/CS336_TinyStories_Trained.ipynb).
+
+We committed the [metrics](../CS336_Colab/runs/metrics.json) and [learning curves](../CS336_Colab/runs/learning_curves.png) and published the FP16 export as [`model.pt` on the `tinystories-v1` release](https://github.com/xqzr2000/Stanford-CS336-Llama-Adaptation/releases/tag/tinystories-v1). The export includes the tokenizer and model configuration for CPU generation.
+
 ## Entry template
 
 Append a dated entry above this template.

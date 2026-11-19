@@ -1,6 +1,6 @@
 # CS336 Colab
 
-This is the Stanford CS336 Assignment 1 track of the project. We trained a byte-level BPE tokenizer and a 22.7M-parameter Transformer from random weights on TinyStories using a Google Colab T4. The repository's [Modal track](../llama_lab/) trains a 124M-parameter Llama-style model on FineWeb-Edu.
+This is the completed Stanford CS336 Assignment 1 track of the project. We trained a byte-level BPE tokenizer and a 22.7M-parameter Transformer from random weights on TinyStories using a Google Colab T4. The separate [Modal track](../docs/Plan.md) is set up to train a 124M-parameter Llama-style model on FineWeb-Edu.
 
 - [Trained notebook with saved outputs](CS336_TinyStories_Trained.ipynb) · [Open in Colab](https://colab.research.google.com/github/xqzr2000/Stanford-CS336-Llama-Adaptation/blob/main/CS336_Colab/CS336_TinyStories_Trained.ipynb)
 - [Original training notebook](CS336_TinyStories_Training.ipynb)
@@ -22,13 +22,13 @@ The full run finished 40,000 optimizer steps with a full-split perplexity of **4
 
 ![Training and sampled validation loss over 327.68 million tokens](runs/learning_curves.png)
 
-The [run metrics](runs/metrics.json) include the configuration and complete loss history. The FP16 inference export, `model.pt`, is distributed through [GitHub Releases](https://github.com/xqzr2000/Stanford-CS336-Llama-Adaptation/releases) under the tag `tinystories-v1`.
+The [run metrics](runs/metrics.json) include the configuration and complete loss history. [Download `model.pt`](https://github.com/xqzr2000/Stanford-CS336-Llama-Adaptation/releases/download/tinystories-v1/model.pt) from the [`tinystories-v1` release](https://github.com/xqzr2000/Stanford-CS336-Llama-Adaptation/releases/tag/tinystories-v1).
 
 ## What changed in the generated stories
 
 Both models continued the same prompt about a little robot finding a blue kite at the same peak learning rate of `3e-3`. The sweep sample repeats itself and drifts through a bird, a balloon, and an unexplained angel. The full-run sample keeps the robot and the girl at the center of the story and follows a clear sequence where she loses her kite, the robot retrieves it from a tree, and they become friends. It still has a local continuity slip when the robot takes a kite before going to look for it.
 
-See Section 12 of the [trained notebook](CS336_TinyStories_Trained.ipynb) for both stories and the side-by-side analysis. Section 12 labels the final sample “200M.” The same story appears in Section 10, where the output identifies the completed 40,000-step checkpoint. With 8,192 tokens per step, that run processed 327.68 million tokens.
+See Section 12 of the [trained notebook](CS336_TinyStories_Trained.ipynb) for both stories and the side-by-side analysis. The comparison uses the 40.96M-token sweep checkpoint and the 327.68M-token full-run checkpoint.
 
 ## Model and training settings
 
@@ -46,10 +46,12 @@ The notebook includes a hand-written attention implementation. `FAST_ATTENTION =
 
 ## Generate stories in Colab
 
-1. Download `model.pt` from the `tinystories-v1` release once it is published.
-2. Open the trained notebook in Colab. A CPU runtime is enough. Upload `model.pt` through the Files sidebar so it is available at `/content/model.pt`.
-3. In Section 1, set `MODE = "generate"` and `GENERATE_FROM = "local"`. Keep `LOCAL_MODEL_PATH = Path("/content/model.pt")`, or set it to the upload path you used.
-4. Run the notebook. Generation mode skips the dataset, tokenizer training, and model training. Change `PROMPT` in Section 10 to try your own opening.
+1. [Open the trained notebook in Colab](https://colab.research.google.com/github/xqzr2000/Stanford-CS336-Llama-Adaptation/blob/main/CS336_Colab/CS336_TinyStories_Trained.ipynb). A CPU runtime is enough.
+2. In Section 1, set `MODE = "generate"` and `GENERATE_FROM = "github"`.
+3. Select **Runtime → Run all**. Section 10 downloads the released weights and prints a story. This mode skips Drive mounting, data preparation, and training.
+4. Change `PROMPT` in Section 10 and rerun that cell to try your own opening.
+
+To use a manually downloaded copy, upload it through Colab's Files sidebar and set `GENERATE_FROM = "local"` and `LOCAL_MODEL_PATH = Path("/content/model.pt")`, adjusting the path to match your upload.
 
 If you have the export in Drive at `MyDrive/CS336_TinyStories/runs/full-lr3e-03/model.pt`, use `MODE = "generate"`, `GENERATE_FROM = "drive"`, `PROFILE = "full"`, and `PEAK_LR = 3e-3`.
 

@@ -8,4 +8,3 @@ data/
 runs/
 !/CS336_Colab/runs/
 *.pt
-!CS336_Colab/*.pt

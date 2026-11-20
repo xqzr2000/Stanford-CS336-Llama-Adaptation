@@ -96,7 +96,7 @@ Separate embeddings with a 32k vocabulary land at almost exactly GPT-2 Small's 1
 
 [FineWeb-Edu](https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu) `sample/10BT`, tokenized once and stored as a flat `uint16` token stream with a manifest and the tokenizer.
 
-- **Already built in Colab:** a 1B-token training cache and 10M validation tokens. That's plenty for the smoke test and the sweep. The context length can change without re-tokenizing.
+- **Built once in Colab, on a CPU runtime:** the first two `sample/10BT` files (about 1.5B training tokens) and 10M validation tokens from the last file, which training never reads. That's plenty for the smoke test and the sweep. The context length can change without re-tokenizing.
 - **For the main run:** the rest of `sample/10BT` is tokenized on Modal CPUs with the **same `tokenizer.json`**, checked by its SHA-256. About 10B tokens is roughly one pass over the sample.
 
 ### Training setup
@@ -135,18 +135,20 @@ The L4's problem is speed, not precision. Its memory bandwidth is a fifth of the
 
 ### What the Colab notebook does
 
-1. **Load the cache.** Copy the token cache from Drive to the VM's local disk, check the tokenizer hash, manifest and file sizes, and memory-map the streams.
+[`CS336_Colab/CS336_FineWebEdu_Llama124M_LR_Sweep.ipynb`](CS336_Colab/CS336_FineWebEdu_Llama124M_LR_Sweep.ipynb)
+
+1. **Build the cache once, then load and check it.** On a CPU runtime, the first run downloads FineWeb-Edu shards, trains the 32k BPE tokenizer, tokenizes about 1.5B training and 10M validation tokens, and saves them to Drive. Later sessions copy the cache from Drive to the VM's local disk, check the tokenizer hash, manifest, file sizes and fingerprints, and memory-map the streams.
 2. **Smoke test.** Confirm bf16 is supported, overfit a single batch, run a short training segment and check that loss falls without NaNs, and save, reload and resume a checkpoint with identical results.
 3. **Probe.** Try micro-batches (for example 32, 16 and 8 sequences of 1,024 tokens) with full optimizer steps. Record tokens per second and peak memory, and pick the fastest one with at least 1 GiB of headroom. Gradient accumulation keeps the effective batch at 524,288 tokens.
-4. **LR sweep.** Run the exact final setup (bf16, `torch.compile`, context 1,024, the same batch and warmup) at five peak rates on a log scale: `3e-4, 6e-4, 1e-3, 2e-3, 3e-3`. The LR stays constant after warmup, as in WSD's stable phase. Compare validation loss at matched tokens and watch for loss spikes. Short runs favor slightly higher rates, so if two are close, pick the lower one.
-5. **Save** the results, curves and probe numbers to Drive, with hourly resumable checkpoints in case Colab disconnects.
+4. **LR sweep.** Run the exact final setup (bf16, `torch.compile`, context 1,024, the same batch and warmup) at five peak rates on a log scale on an A100: `3e-4, 6e-4, 1e-3, 2e-3, 3e-3`. The L4 plan drops `3e-4`. The LR stays constant after warmup, as in WSD's stable phase. Compare validation loss at matched tokens and watch for loss spikes. Short runs favor slightly higher rates, so if two are close, pick the lower one.
+5. **Save** the results, curves and probe numbers to Drive, with an hourly resumable checkpoint in case Colab disconnects. Only the latest checkpoint is kept, and the notebook purges its own replaced checkpoints from the Drive trash.
 
 | | A100 40 GB | L4 |
 | --- | --- | --- |
 | Micro-batch (to be confirmed by the probe) | ~32 × 1,024, 16 accumulation steps | ~8–16 × 1,024, 32–64 accumulation steps |
 | Expected speed | ~150k tokens/s | ~40k tokens/s |
-| Sweep length | 5 rates × 600 steps (315M tokens each) | 5 rates × 200 steps (105M tokens each) |
-| Sweep time (estimate) | ~3 h | ~3.5–4 h |
+| Sweep length | 5 rates × 600 steps (315M tokens each) | 4 rates × 400 steps (210M tokens each) |
+| Sweep time (estimate) | ~3 h | ~6 h, over two sessions |
 | Follow-up | None | Recheck the top two rates for 300 steps each on the Modal H100 (about USD 1–2) |
 
 All speeds and times above are estimates. The probe replaces them with measured numbers.

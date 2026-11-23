@@ -104,9 +104,9 @@ We ran a two-round learning-rate sweep on a Colab T4. Each run processed 40.96M 
 
 The sweep's frequent checkpoints took up about 10 GB in Drive. For the full run, we switched to hourly saves with two retained checkpoints. The notebook resumes from the newest readable checkpoint and can fall back to the previous one. It also reuses the saved BPE tokenizer and encoded token files, so reopening Colab with the same run settings skips data preparation and the sweep.
 
-The full run processed **327.68M tokens** and reached **1.4466** on the fixed 512-window validation sample and **1.4099** on the full split, for a perplexity of **4.10**. In the saved blue-kite comparison, the sweep sample drifts between characters while the full-run sample keeps the robot and the girl in a story with a clear problem and resolution. [Trained notebook, Section 12](../CS336_Colab/CS336_TinyStories_Trained.ipynb).
+The full run processed **327.68M tokens** and reached **1.4466** on the fixed 512-window validation sample and **1.4099** on the full split, for a perplexity of **4.10**. In the saved blue-kite comparison, the sweep sample drifts between characters while the full-run sample keeps the robot and the girl in a story with a clear problem and resolution. [Trained notebook, Section 12](../CS336_Colab/TinyStories/CS336_TinyStories_Trained.ipynb).
 
-We committed the [metrics](../CS336_Colab/runs/metrics.json) and [learning curves](../CS336_Colab/runs/learning_curves.png) and published the FP16 export as [`model.pt` on the `tinystories-v1` release](https://github.com/xqzr2000/Stanford-CS336-Llama-Adaptation/releases/tag/tinystories-v1). The export includes the tokenizer and model configuration for CPU generation.
+We committed the [metrics](../CS336_Colab/TinyStories/runs/metrics.json) and [learning curves](../CS336_Colab/TinyStories/runs/learning_curves.png) and published the FP16 export as [`model.pt` on the `tinystories-v1` release](https://github.com/xqzr2000/Stanford-CS336-Llama-Adaptation/releases/tag/tinystories-v1). The export includes the tokenizer and model configuration for CPU generation.
 
 ## Entry template
 

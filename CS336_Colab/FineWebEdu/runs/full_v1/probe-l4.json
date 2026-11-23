@@ -1,0 +1,41 @@
+{
+  "gpu": "NVIDIA L4 (compute capability 8.9)",
+  "gpu_tag": "l4",
+  "torch": "2.14.1+cu130",
+  "rows": [
+    {
+      "microbatch": 16,
+      "first_step_seconds": 53.43113619600001,
+      "tokens_per_second": 41365.182825754564,
+      "eval_seconds": 20.19009221099998,
+      "peak_gib": 13.350022315979004,
+      "headroom_gib": 6.178420066833496,
+      "status": "ok",
+      "mfu": 0.24402115833911683
+    },
+    {
+      "microbatch": 8,
+      "first_step_seconds": 45.40993006000008,
+      "tokens_per_second": 41207.25597205339,
+      "eval_seconds": 19.72124906399995,
+      "peak_gib": 7.717301368713379,
+      "headroom_gib": 11.908797264099121,
+      "status": "ok",
+      "mfu": 0.24308951749673624
+    },
+    {
+      "microbatch": 4,
+      "first_step_seconds": 46.463231424000014,
+      "tokens_per_second": 39680.76630961139,
+      "eval_seconds": 20.006949893999945,
+      "peak_gib": 4.907227516174316,
+      "headroom_gib": 13.078246116638184,
+      "status": "ok",
+      "mfu": 0.23408446179105077
+    }
+  ],
+  "microbatch": 16,
+  "tokens_per_second": 41365.182825754564,
+  "mfu": 0.24402115833911683,
+  "measured_utc": "2026-11-22 03:23 UTC"
+}

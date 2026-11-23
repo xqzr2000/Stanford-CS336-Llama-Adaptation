@@ -4,8 +4,8 @@ Training small GPT-2-class language models from scratch, following Stanford CS33
 
 | Track | Model | Status | Start here |
 | --- | --- | --- | --- |
-| 1. TinyStories on a Colab T4 | 22.7M-parameter Transformer | **Completed.** 327.68M training tokens, **1.4099** full-split validation loss | [Results](CS336_Colab/README.md) · [Trained notebook](CS336_Colab/CS336_TinyStories_Trained.ipynb) · [Model release](https://github.com/xqzr2000/Stanford-CS336-Llama-Adaptation/releases/tag/tinystories-v1) |
-| 2. FineWeb-Edu, tested on Colab, trained on Modal | 124.7M-parameter Llama | **Planned.** Smoke test and LR sweep on a Colab A100 or L4, then the full run on a Modal H100 | [Section 3](#3-track-2-a-124m-llama-on-fineweb-edu) |
+| 1. TinyStories on a Colab T4 | 22.7M-parameter Transformer | **Completed.** 327.68M training tokens, **1.4099** full-split validation loss | [Results](CS336_Colab/README.md) · [Trained notebook](CS336_Colab/TinyStories/CS336_TinyStories_Trained.ipynb) · [Model release](https://github.com/xqzr2000/Stanford-CS336-Llama-Adaptation/releases/tag/tinystories-v1) |
+| 2. FineWeb-Edu on a Colab L4 (bf16) | 124.7M-parameter Llama | **Stage 1 done.** 3.0B training tokens, **3.126** full-split validation loss. Stage 2 (10B tokens) in progress | [Section 3](#3-track-2-a-124m-llama-on-fineweb-edu) · [Results](CS336_Colab/README.md#fineweb-edu) · [Stage 1 notebook](CS336_Colab/FineWebEdu/CS336_FineWebEdu_Llama124M_Trained_Stage_1.ipynb) |
 
 ## 1. Where this project sits in the GPT-2 family
 
@@ -71,7 +71,7 @@ This track follows Stanford CS336 Assignment 1. We trained a 10,000-entry byte-l
 
 The T4 has no bf16, so the run used FP16 autocast with a gradient scaler. That worked at this size. Section 4 explains why we don't repeat it for 124M.
 
-Full results, curves, sample stories and the Colab demo are in [`CS336_Colab/`](CS336_Colab/README.md). [Open the trained notebook in Colab](https://colab.research.google.com/github/xqzr2000/Stanford-CS336-Llama-Adaptation/blob/main/CS336_Colab/CS336_TinyStories_Trained.ipynb) to generate a story from the released weights on a CPU runtime.
+Full results, curves, sample stories and the Colab demo are in [`CS336_Colab/`](CS336_Colab/README.md#tinystories). [Open the trained notebook in Colab](https://colab.research.google.com/github/xqzr2000/Stanford-CS336-Llama-Adaptation/blob/main/CS336_Colab/TinyStories/CS336_TinyStories_Trained.ipynb) to generate a story from the released weights on a CPU runtime.
 
 ## 3. Track 2: a 124M Llama on FineWeb-Edu
 
@@ -97,7 +97,7 @@ Separate embeddings with a 32k vocabulary land at almost exactly GPT-2 Small's 1
 [FineWeb-Edu](https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu) `sample/10BT`, tokenized once and stored as a flat `uint16` token stream with a manifest and the tokenizer.
 
 - **Built once in Colab, on a CPU runtime:** the first two `sample/10BT` files (about 1.5B training tokens) and 10M validation tokens from the last file, which training never reads. That's plenty for the smoke test and the sweep. The context length can change without re-tokenizing.
-- **For the main run:** the rest of `sample/10BT` is tokenized on Modal CPUs with the **same `tokenizer.json`**, checked by its SHA-256. About 10B tokens is roughly one pass over the sample.
+- **For the full run:** the rest of `sample/10BT` was tokenized in Colab with the **same `tokenizer.json`**, checked by its SHA-256, in 1 hour 40 minutes. That gives 9.82B training tokens in 13 files, so 10B tokens is about one pass over the sample.
 
 ### Training setup
 
@@ -108,13 +108,13 @@ Separate embeddings with a 32k vocabulary land at almost exactly GPT-2 Small's 1
 | Optimizer | Fused AdamW, β = (0.9, 0.95), weight decay 0.1, gradient clipping 1.0 |
 | Speed | `torch.compile`, flash attention through `scaled_dot_product_attention` |
 | Schedule | WSD: 250 warmup steps, constant LR, then linear decay over the last ~20% of tokens |
-| Token budget | 2.5B guaranteed (step 4,768), 10B target (step 19,073), within USD 50 |
+| Token budget | Stage 1: 2.5B, plus a 0.5B decay branch (done). Stage 2: 10B (step 19,073) |
 
 **Why WSD (warmup–stable–decay) instead of cosine.** A cosine schedule has to know its end point in advance. With WSD the learning rate stays constant until we choose to decay, so:
 
-1. At 2.5B tokens, the Chinchilla-optimal point for 124M, we save the pre-decay checkpoint and branch a short decay (0.25–0.5B tokens). That gives a finished 2.5B model.
+1. At 2.5B tokens, the Chinchilla-optimal point for 124M, we save the pre-decay checkpoint and branch a short decay (0.5B tokens). That gives a finished 2.5B model: Stage 1.
 2. The main run continues from the **pre-decay** checkpoint, not the decayed branch.
-3. We choose when to start the final decay from the measured cost, so the run ends on budget whatever the real throughput turns out to be.
+3. We choose when to start the final decay from the measured speed, so the run can be shortened at any point before the decay starts.
 
 ## 4. Smoke test, probe and LR sweep on Colab (A100 or L4, bf16)
 
@@ -129,13 +129,13 @@ bf16 keeps FP32's exponent range with fewer mantissa bits. Large values don't ov
 | T4 | ❌ (FP16 only) | 16 GB | 320 GB/s | — (65 TFLOPS FP16) | Track 1 only |
 | L4 | ✅ | 24 GB | 300 GB/s | ~121 TFLOPS | Colab fallback when no A100 is available |
 | A100 40 GB | ✅ | 40 GB | 1.6 TB/s | 312 TFLOPS | Preferred Colab GPU |
-| H100 80 GB | ✅ | 80 GB | 3.35 TB/s | 989 TFLOPS | Final run on Modal |
+| H100 80 GB | ✅ | 80 GB | 3.35 TB/s | 989 TFLOPS | Not used for 124M (see Section 5) |
 
 The L4's problem is speed, not precision. Its memory bandwidth is a fifth of the A100's, so expect about a quarter of the A100's throughput. Colab doesn't guarantee an A100, so the notebook plans for both and sizes the sweep to whichever GPU it gets.
 
 ### What the Colab notebook does
 
-[`CS336_Colab/CS336_FineWebEdu_Llama124M_LR_Sweep.ipynb`](CS336_Colab/CS336_FineWebEdu_Llama124M_LR_Sweep.ipynb)
+[`CS336_Colab/FineWebEdu/CS336_FineWebEdu_Llama124M_LR_Sweep.ipynb`](CS336_Colab/FineWebEdu/CS336_FineWebEdu_Llama124M_LR_Sweep.ipynb)
 
 1. **Build the cache once, then load and check it.** On a CPU runtime, the first run downloads FineWeb-Edu shards, trains the 32k BPE tokenizer, tokenizes about 1.5B training and 10M validation tokens, and saves them to Drive. Later sessions copy the cache from Drive to the VM's local disk, check the tokenizer hash, manifest, file sizes and fingerprints, and memory-map the streams.
 2. **Smoke test.** Confirm bf16 is supported, overfit a single batch, run a short training segment and check that loss falls without NaNs, and save, reload and resume a checkpoint with identical results.
@@ -151,41 +151,26 @@ The L4's problem is speed, not precision. Its memory bandwidth is a fifth of the
 | Sweep time (estimate) | ~3 h | ~6 h, over two sessions |
 | Follow-up | None | Recheck the top two rates for 300 steps each on the Modal H100 (about USD 1–2) |
 
-All speeds and times above are estimates. The probe replaces them with measured numbers.
+All speeds and times above were estimates before the run.
 
-## 5. Final training on a Modal H100
+**Result.** Colab assigned an L4, so the sweep ran 4 rates × 400 steps at about 41k tokens/s (25% MFU). `2e-3` had the lowest validation loss at every check after warmup: 4.220 at step 400, against 4.307 for `1e-3`, 4.434 for `6e-4` and 4.323 for `3e-3`, which spiked as warmup ended. We picked `2e-3`. The H100 recheck turned out unnecessary: the full run reproduced the sweep's 2e-3 curve (Section 5). [Sweep results](CS336_Colab/README.md#lr-sweep)
 
-We first planned the full run on a Modal A100 to save money. Pricing it out showed the H100 doesn't cost more for the same tokens:
+## 5. Full training on a Colab L4
 
-- Modal charges USD 3.95/h for an H100 and USD 2.10/h for an A100 40 GB, a ratio of 1.9.
-- For a model this size, an H100 runs roughly 2–2.5 times faster than an A100. (llm.c's GPT-2 124M run took 90 minutes on 8×A100 and 45 minutes on 8×H100.)
-- So the cost per token is about the same, and the run finishes in about half the wall-clock time, with fewer segments to babysit.
-- The sweep's bf16 numerics match, so its LR carries over. A short pilot on the H100 measures the throughput that sets the decay point.
+The plan was to run the full training on a Modal H100 within a USD 50 budget. We moved it to Colab, for three reasons:
 
-### Run plan
+- **Colab handles a multi-day run.** The [training notebook](CS336_Colab/FineWebEdu/CS336_FineWebEdu_Llama124M_Trained_Stage_1.ipynb) saves a checkpoint to Drive every hour, holds an interrupt until the current step finishes, and resumes on whichever GPU the next session gets. A spike guard rolls back loss spikes from in-memory snapshots.
+- **The compute units come with the Google AI Pro subscription**, so the whole 10B-token run costs about 120 units instead of about USD 41–50 on Modal.
+- **The A100 was never available.** Colab assigned an L4 in every session. The L4 is as cheap per token as the A100, but 3–4 times slower: 40,350 tokens/s against an expected 130–150k. Stage 1 took 20.9 hours instead of about 6, and the whole plan takes about 72 hours instead of about 21.
 
-1. **Tokenize** the rest of `sample/10BT` on Modal CPUs with the Colab tokenizer, into a Modal Volume.
-2. **Pilot:** about 200 H100 steps to measure tokens/s, memory and the cost per billion tokens. On the L4 path, also recheck the top two LRs.
-3. **Main run to 2.5B tokens** (step 4,768) in resumable segments. Save the pre-decay checkpoint and run the short decay branch.
-4. **Continue the stable phase** from the pre-decay checkpoint, then start the final decay early enough to finish within budget.
-5. **Export** FP16 weights, the tokenizer and metrics for the Colab notebook.
+| Stage | Steps | Tokens | Result |
+| --- | ---: | ---: | --- |
+| 1. Warmup and stable phase, then a decay branch | 1–4,768, branch 4,769–5,722 | 2.5B + 0.5B | **Done.** Validation loss 3.136, full split **3.126**, in 20.9 h |
+| 2. Stable phase continued from step 4,768, then the final decay | 4,769–19,073 | 10.0B | In progress, about 52 h on the L4 |
 
-### Budget (USD 50 cap)
+Results, curves and samples are in [`CS336_Colab/`](CS336_Colab/README.md#fineweb-edu). After Stage 2, both models get a GitHub release and a side-by-side comparison of their generated text.
 
-Set a USD 50 workspace budget in Modal before the first job. The estimates assume 300–350k tokens/s on the H100 (about 22–25% MFU) plus about USD 0.3–0.6/h for the container's CPU and memory.
-
-| Item | Estimate |
-| --- | ---: |
-| Tokenize ~10B tokens on Modal CPUs | USD 3–5 |
-| H100 pilot | ~USD 1 |
-| Main run to 2.5B + decay branch | USD 9–11 |
-| Continue to 10B with the final decay | USD 26–32 |
-| Volume storage (~25 GB) | ~USD 2/month |
-| **Total** | **~USD 41–50** |
-
-**Decision rule:** if the pilot measures under about 300k tokens/s, start the final decay earlier (around 7–8B tokens). WSD makes that a one-line change instead of a restart. The 2.5B model is guaranteed in every case.
-
-> **Note:** the code in `llama_lab/` and `modal_app.py` still implements the earlier H100 plan (16,384-entry vocabulary, context 256, 16,384 tokens per step, cosine schedule). It will be updated to this configuration before any paid run. Until then, the [Runbook](docs/Runbook.md) commands describe the old setup.
+> **Note:** the code in `llama_lab/` and `modal_app.py` still implements the earlier H100 plan (16,384-entry vocabulary, context 256, 16,384 tokens per step, cosine schedule) and isn't used by the 124M run. The [Runbook](docs/Runbook.md) commands describe that old setup.
 
 ## 6. Later: SST-5 fine-tuning and post-training
 

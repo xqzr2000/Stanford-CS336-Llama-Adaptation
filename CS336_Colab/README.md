@@ -9,23 +9,35 @@ The Colab side of the project: two language models trained from random weights i
 
 ```text
 CS336_Colab/
-  README.md
-  TinyStories/
-    CS336_TinyStories_Training.ipynb           # original training notebook
-    CS336_TinyStories_Trained.ipynb            # trained notebook with saved outputs, story generator
-    runs/
-      metrics.json  learning_curves.png
-  FineWebEdu/
-    CS336_FineWebEdu_Llama124M_LR_Sweep.ipynb          # token cache, smoke test, probe, LR sweep
-    CS336_FineWebEdu_Llama124M_Trained_Stage_1.ipynb   # full training, recorded at the end of Stage 1
-    runs/
-      lr_sweep_v1/
-        sweep_summary.json  lr_sweep.png
-      full_v1/
-        run_config.json  probe-l4.json  token_cache_manifest.json
-        stage1_2.5B/
-          main_metrics.json  branch_metrics.json  model.json  training_curves.png
-        stage2_10B/                                    # after Stage 2
+├── README.md
+│
+├── TinyStories/
+│   ├── CS336_TinyStories_Training.ipynb          # Original training notebook
+│   ├── CS336_TinyStories_Trained.ipynb           # Trained notebook, saved outputs & story generator
+│   └── runs/
+│       ├── metrics.json
+│       └── learning_curves.png
+│
+└── FineWebEdu/
+    ├── CS336_FineWebEdu_Llama124M_LR_Sweep.ipynb         # Token cache, smoke test, probe & LR sweep
+    ├── CS336_FineWebEdu_Llama124M_Trained_Stage_1.ipynb  # Full training, Stage 1 results
+    └── runs/
+        ├── lr_sweep_v1/
+        │   ├── sweep_summary.json
+        │   └── lr_sweep.png
+        │
+        └── full_v1/
+            ├── run_config.json
+            ├── probe-l4.json
+            ├── token_cache_manifest.json
+            │
+            ├── stage1_2.5B/
+            │   ├── main_metrics.json
+            │   ├── branch_metrics.json
+            │   ├── model.json
+            │   └── training_curves.png
+            │
+            └── stage2_10B/                      # After Stage 2
 ```
 
 ## TinyStories

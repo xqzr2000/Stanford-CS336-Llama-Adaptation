@@ -16,7 +16,7 @@ This is Track 3. Tracks 1 and 2 (TinyStories and the 124M FineWeb-Edu model) run
 | Our estimate on Modal | USD 1,000–1,400 per attempt | **USD 100–200 per attempt** (our own code will be slower than nanochat's) |
 | End result | A base model at GPT-2 XL level | A base model at GPT-2 XL level, then SFT into a chat model |
 
-Both teach multi-GPU training, a larger data pipeline and the operations of a long run. The modern recipe also teaches the optimizer and architecture changes behind recent small-model progress, and it fits a budget that can be saved up for in weeks rather than months. The classic cost table stays in the [README](../README.md#what-a-classic-reproduction-would-cost-on-modal) for reference.
+Both teach multi-GPU training, a larger data pipeline and the operations of a long run. The modern recipe also teaches the optimizer and architecture changes behind recent small-model progress, and it fits a budget that can be saved up for in weeks rather than months. The classic estimate is based on llm.c's measured GPT-2 1.5B run, in the table above.
 
 **Set expectations.** At this scale, "GPT-2 XL capability" means fluent paragraphs and some general knowledge, not reasoning. nanochat describes its GPT-2-grade chat model as a bit like talking to a kindergartener. The 1.5B-class models that feel capable today were trained on trillions of tokens.
 

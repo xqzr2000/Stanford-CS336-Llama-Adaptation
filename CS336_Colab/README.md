@@ -109,7 +109,7 @@ The run writes its checkpoints, export, metrics, and plot to `MyDrive/CS336_Tiny
 
 ## FineWeb-Edu
 
-This track trains the 124,668,672-parameter Llama of [Track 2](../README.md#3-track-2-a-124m-llama-on-fineweb-edu) from random weights on [FineWeb-Edu](https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu) `sample/10BT`. It uses CMU 11-711 Llama 2 blocks at GPT-2 Small's depth and width, a 32,000-entry BPE tokenizer trained on FineWeb-Edu, and bf16 on a Colab L4. It runs in two notebooks:
+This track trains the 124,668,672-parameter Llama of [Track 2](../README.md#2-practicing-at-124m-a-llama-style-model-on-fineweb-edu) from random weights on [FineWeb-Edu](https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu) `sample/10BT`. It uses CMU 11-711 Llama 2 blocks at GPT-2 Small's depth and width, a 32,000-entry BPE tokenizer trained on FineWeb-Edu, and bf16 on a Colab L4. It runs in two notebooks:
 
 - [LR sweep notebook](FineWebEdu/CS336_FineWebEdu_Llama124M_LR_Sweep.ipynb): builds the first token cache, runs the smoke test and probe, and sweeps the peak learning rate.
 - [Stage 1 trained notebook](FineWebEdu/CS336_FineWebEdu_Llama124M_Trained_Stage_1.ipynb): the full-training notebook with its saved output up to the end of Stage 1. It also explains the compute math (parameters, tokens, FLOPs, MFU) and the warmup–stable–decay schedule, with this run's numbers.

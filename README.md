@@ -29,11 +29,35 @@ This project trains three models:
 
 ### The 1.5B model is where the real fun begins
 
-As Yann LeCun wrote on [X](https://x.com/ylecun/status/2099248236074545576):
+GPT-2 XL, the 1.5B model, is a landmark. Its paper ([Radford et al., 2019](https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf)) made the case that a language model trained only to predict the next word of web text starts doing tasks it was never trained for: answering questions, translating, summarizing. It did them badly, but it did them, and it did them better the bigger the model got. GPT-3, ChatGPT and today's assistants all grew from that idea.
+
+It's also the model that brought the argument about releasing AI models into the open. As Yann LeCun wrote on [X](https://x.com/ylecun/status/2099248236074545576) in 2026:
 
 > "Right. Dario was already claiming that GPT2 was too dangerous to open source back in 2019. I made fun of them then. Everyone should make fun of them now."
 
+That's LeCun's view. What actually happened: in February 2019 OpenAI [released only its smallest GPT-2](https://openai.com/index/better-language-models/), citing concerns about the model being used to generate deceptive, biased or abusive language at scale, and called the decision an experiment it wasn't sure was right. Dario Amodei, now Anthropic's CEO, was then OpenAI's VP of Research and a co-author of the paper. The release was staged over the year, and the [full 1.5B model came out in November 2019](https://openai.com/index/gpt-2-1-5b-release/), with OpenAI reporting no strong evidence of misuse so far. Whether that caution was wise, and how it applies to today's far more capable models, is still debated.
+
+**Why it's the goal here.** Tracks 1 and 2 are my learning path through Stanford CS336 and CMU 11-711: tokenizer, Transformer, training loop, learning-rate sweeps, schedules, checkpoints, at 23M and then 124M parameters. Once the basics work, the natural next step is the model that started it all, and the first glimpse of general ability from nothing but next-word prediction.
+
+To be honest about what that glimpse is: a 1.5B-class model is the start of that road, not the destination. It writes fluent paragraphs and knows some facts, but it doesn't reason. "Emergent abilities", skills that jump from chance to real performance once a model is big enough ([Wei et al., 2022](https://arxiv.org/abs/2206.07682)), mostly show up in far larger models, and some researchers argue the jumps depend on how they're measured ([Schaeffer et al., 2023](https://arxiv.org/abs/2304.15004)). What this repo can show is the GPT-2 effect itself: the same kind of model doing tasks it was never trained for, and how that improves along the ladder 23M → 124M → 1.5B.
+
 Sadly, GPT-2 XL is far *too dangerous* for my wallet. After overspending on H100 time for my CMU 11-768 Assignment 3 project, my budget was devastated enough that I had to ~~skip GTA VI~~.
+
+#### Same size, very different training
+
+What makes a model capable isn't its size alone but how much it's trained: parameters × tokens, plus the quality of the data and the recipe. Today's capable 1–2B models are about GPT-2 XL's size, but trained on roughly a thousand times more tokens than a GPT-2-level run:
+
+| Model | Year | Parameters | Training tokens | Tokens per parameter | Training cost |
+| --- | --- | ---: | ---: | ---: | ---: |
+| GPT-2 XL (OpenAI) | 2019 | 1.5B | not published | — | ~USD 43,000 ([estimate](https://github.com/karpathy/nanochat)) |
+| GPT-2 XL reproduction, [llm.c](https://github.com/karpathy/llm.c/discussions/677) | 2024 | 1.6B | 32B | ~20 | USD 672 |
+| [nanochat](https://github.com/karpathy/nanochat), GPT-2 XL-level | 2026 | ~1–1.4B | ~7–15B | ~8–10.5 | ~USD 48 (2 h on 8×H100 at USD 3/GPU-hour) |
+| **This project, Track 3 (planned)** | 2026–27 | ~1–1.4B | ~7–15B | ~8–10.5 | **USD 180–290** (all phases, on Modal) |
+| Llama 3.2 1B (Meta) | 2024 | 1.2B | 9T | ~7,300 | — |
+| Qwen2.5-1.5B (Alibaba) | 2024 | 1.5B | 18T | ~12,000 | — |
+| SmolLM2-1.7B (Hugging Face) | 2025 | 1.7B | 11T | ~6,500 | ~USD 250,000 |
+
+Token counts for Llama 3.2, Qwen2.5 and SmolLM2, and SmolLM2's cost, are from the [SmolLM2 paper](https://arxiv.org/abs/2502.02737). Track 3 sits at the GPT-2 end of this table on purpose: it's what one learner can afford. The gap to the bottom rows is mostly training data and compute, not the architecture.
 
 GPT-2 XL is the size that would teach something genuinely new:
 

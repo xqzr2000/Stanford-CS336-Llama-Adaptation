@@ -4,7 +4,7 @@ A chronological journal of running this project on Modal. Record what happened t
 
 ## November 13, 2026 · Set up the cloud workflow
 
-Codespaces is the control computer. It runs the Modal CLI, starts jobs, and reads logs and artifacts. On Modal, CPU functions prepare FineWeb-Edu and generate samples. One H100 runs pretraining or SST-5 fine-tuning. The named Volume `cs336-llama-adaptation-artifacts` stores the tokenizer, token streams, checkpoints, and results across invocations.
+Codespaces is the control computer. It runs the Modal CLI, starts jobs, and reads logs and artifacts. On Modal, CPU functions were to prepare FineWeb-Edu and generate samples, and one H100 was to run pretraining or SST-5 fine-tuning. (That plan changed on November 22; see below.) The named Volume `cs336-llama-adaptation-artifacts` stores the tokenizer, token streams, checkpoints, and results across invocations.
 
 The repository's devcontainer, locked dependencies, and CPU CI are in place. Local verification covered preparation of the full dataset and checkpoint resume. First live preparation, CUDA image build, H100 timings, and actual Modal spend are pending.
 
@@ -19,12 +19,25 @@ The repository's devcontainer, locked dependencies, and CPU CI are in place. Loc
 
 [11-768 Modal journal](https://github.com/xqzr2000/cmu-11-768-assignment-3/blob/main/docs/cloud-walker-Modal.md) · [Modal budgets](https://modal.com/docs/guide/budgets) · [Detached runs](https://modal.com/docs/cli/latest/run) · [Volumes](https://modal.com/docs/guide/volumes)
 
-## What to measure on the first H100 pilot
+## What to measure on the first 8×H100 pilot
 
-- Record the launch time, app ID, first training log, final checkpoint step, elapsed time, sustained tokens/sec, and peak allocated GPU memory.
-- Check that `latest.pt` and the corresponding `metrics-*.json` are visible from Codespaces. On the next segment, record the logged resume step.
-- Record billed usage for the app and cumulative project charges when they appear in Modal. Label estimates and dashboard totals separately. Keep pretraining and SST-5 app IDs with the records.
+- Record the launch time, app ID, image build time, time waiting for GPUs, start-up time and time to the first training step, each separately.
+- Record sustained tokens/s, MFU and peak GPU memory per device once training is steady, and how long a checkpoint takes to save and commit.
+- Stop the pilot, relaunch it, and record the step and loss on both sides of the resume.
+- Record the pilot's billed cost and the running project total. Label estimates and billed figures separately.
 - If the job fails, capture the first relevant error and the last successful checkpoint or log line. Note what changed before the retry and how the retry was verified.
+
+## November 22, 2026 · New plan: Modal is for Track 3
+
+The 124M model (Track 2) never ran on Modal. It trained on Colab instead, with hourly checkpoints on Drive and compute units that come with the subscription. Its Stage 1 finished on a Colab L4. The old 124M Modal code (`modal_app.py`, `llama_lab/`) is deleted.
+
+Modal is now for **Track 3, a GPT-2 XL-class model trained with a modern recipe on one 8×H100 node** ([plan](Plan.md)). Each phase has its own spending cap: about USD 60 for data, the pilot and a small rehearsal, then a cap for the full run set from the pilot's measured cost (expected USD 100–200).
+
+What's different from the single-H100 plan:
+
+- An 8×H100 node costs about USD 35/h with CPU and memory, so a stuck job costs USD 35 an hour, not 4. The stall guard and a tight workspace budget limit matter more.
+- A function call still runs at most 24 hours. The full run is expected to take 3–6 hours, but it's written to resume anyway.
+- Checkpoints grow to roughly 11–17 GB, so saving and committing them takes real time, which the pilot measures.
 
 ## Journal entry template
 

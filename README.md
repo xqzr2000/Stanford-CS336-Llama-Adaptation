@@ -6,6 +6,7 @@ Training small GPT-2-class language models from scratch, following Stanford CS33
 | --- | --- | --- | --- |
 | 1. TinyStories on a Colab T4 | 22.7M-parameter Transformer | **Completed.** 327.68M training tokens, **1.4099** full-split validation loss | [Results](CS336_Colab/README.md) · [Trained notebook](CS336_Colab/TinyStories/CS336_TinyStories_Trained.ipynb) · [Model release](https://github.com/xqzr2000/Stanford-CS336-Llama-Adaptation/releases/tag/tinystories-v1) |
 | 2. FineWeb-Edu on a Colab L4 (bf16) | 124.7M-parameter Llama | **Stage 1 done.** 3.0B training tokens, **3.126** full-split validation loss. Stage 2 (10B tokens) in progress | [Section 3](#3-track-2-a-124m-llama-on-fineweb-edu) · [Results](CS336_Colab/README.md#fineweb-edu) · [Stage 1 notebook](CS336_Colab/FineWebEdu/CS336_FineWebEdu_Llama124M_Trained_Stage_1.ipynb) |
+| 3. GPT-2 XL class on a Modal 8×H100 node | ~1–1.4B parameters, modern recipe | **Planned.** Reach GPT-2 XL's CORE score (0.2565), then SFT into a chat model, for about USD 180–290 in capped phases | [Section 7](#7-track-3-a-gpt-2-xl-class-model-on-modal-planned) · [Plan](docs/Plan.md) |
 
 ## 1. Where this project sits in the GPT-2 family
 
@@ -20,10 +21,11 @@ The GPT-2 paper ([Radford et al., 2019](https://cdn.openai.com/better-language-m
 
 Reproductions use the released counts, so "GPT-2 124M" means GPT-2 Small.
 
-This project trains two models:
+This project trains three models:
 
 - **23M (Track 1).** Smaller than any GPT-2. It validates the whole pipeline (tokenizer, data loading, training loop, checkpoints, evaluation) where a run takes hours on a free-tier-class GPU and every bug is cheap to find.
 - **124M (Track 2).** The same 12 layers and width 768 as GPT-2 Small, with Llama-style blocks. This puts the project on the first rung of the GPT-2 family, and 124M on about 10B FineWeb-Edu tokens is a well-known reference setting (Karpathy's nanoGPT and llm.c), so we can tell whether our training is healthy.
+- **GPT-2 XL class (Track 3, planned).** About 1–1.4B parameters trained to GPT-2 XL's benchmark score with a modern recipe on one Modal 8×H100 node. It's the first track that needs multiple GPUs.
 
 ### The 1.5B model is where the real fun begins
 
@@ -39,7 +41,7 @@ GPT-2 XL is the size that would teach something genuinely new:
 - **Data becomes its own project.** About 30B tokens at the Chinchilla ratio of 20 tokens per parameter, and often 100B in practice. That's 60–200 GB of tokens on disk and a sample far larger than FineWeb-Edu `sample/10BT`.
 - **Operations matter.** A multi-day run needs automatic resume, monitoring, loss-spike recovery, and about 25 GB per checkpoint.
 
-#### What it would cost on Modal
+#### What a classic reproduction would cost on Modal
 
 The best measured reference is Karpathy's [llm.c reproduction of GPT-2 1.5B](https://github.com/karpathy/llm.c/discussions/677): 32B tokens on one 8×H100 node in 24 hours, for USD 672 at the rental price he used. That works out to about 40% model FLOPs utilization (MFU), which is very good. Our PyTorch code will likely reach 30–40%.
 
@@ -52,13 +54,17 @@ Training compute is about 6 × parameters × tokens. Modal lists the H100 at USD
 
 The same 30B-token run on A100 80 GBs would take about 620 A100-hours and cost about USD 1,560. Add roughly 20–40% for a short LR check, a pilot, failed starts, CPU and storage. **A single 30B-token attempt comes to roughly USD 1,000–1,400**, more than 20 times this project's budget, plus the multi-GPU code we haven't written yet.
 
-For comparison, OpenAI's original training is estimated at about USD 43,000 in 2019 ([nanochat](https://github.com/karpathy/nanochat)). Newer recipes such as nanochat and [modded-nanogpt](https://github.com/KellerJordan/modded-nanogpt) now reach GPT-2 XL's benchmark scores for under USD 250, and nanochat for about USD 50–75, by using different optimizers and architecture changes. That's a different exercise from training GPT-2 XL itself, and it also needs an 8-GPU node.
+For comparison, OpenAI's original training is estimated at about USD 43,000 in 2019 ([nanochat](https://github.com/karpathy/nanochat)).
 
-**We keep 1.5B as a future plan for when it's affordable.** Steps then: extend the data pipeline to `sample/100BT`, add DDP with sharded optimizer state, test on an 8-GPU Modal container, and run a GPT-2 Medium-sized rehearsal before the full run.
+#### The modern route: Track 3
+
+Newer recipes such as [nanochat](https://github.com/karpathy/nanochat) and [modded-nanogpt](https://github.com/KellerJordan/modded-nanogpt) reach GPT-2 XL's benchmark scores with far less compute. They use the Muon optimizer, modern block details and fewer, better-used tokens. nanochat gets there in 1.65–3 hours on one 8×H100 node, about USD 40–100 depending on the hourly rate.
+
+**That's the plan for Track 3**: GPT-2 XL's capability rather than its exact recipe, in our own code, on Modal. We still get the multi-GPU training, the larger data pipeline and the long-run operations listed above, plus a chat model at the end, for roughly a fifth of the classic cost. [Section 7](#7-track-3-a-gpt-2-xl-class-model-on-modal-planned) summarizes it, and [docs/Plan.md](docs/Plan.md) has the details.
 
 ### Why we skip the 345M model
 
-GPT-2 Medium is affordable: about 7B tokens at the Chinchilla ratio, roughly 12 H100-hours or about USD 50 on Modal. But it teaches nothing new. Same architecture, same tokenizer, same optimizer, same single GPU, just more layers and a longer run for a somewhat lower loss. For a project about learning how these models are built and trained, USD 50 buys more as a careful 124M run. 345M only becomes useful again as a cheap rehearsal before a 1.5B run.
+GPT-2 Medium is affordable: about 7B tokens at the Chinchilla ratio, roughly 12 H100-hours or about USD 50 on Modal. But it teaches nothing new. Same architecture, same tokenizer, same optimizer, same single GPU, just more layers and a longer run for a somewhat lower loss. For a project about learning how these models are built and trained, USD 50 buys more as a careful 124M run. The rehearsal before a big run is still worth doing, but in Track 3's recipe it's a small-depth run that costs a few dollars.
 
 ## 2. Track 1: a 23M model on TinyStories (done)
 
@@ -170,20 +176,35 @@ The plan was to run the full training on a Modal H100 within a USD 50 budget. We
 
 Results, curves and samples are in [`CS336_Colab/`](CS336_Colab/README.md#fineweb-edu). After Stage 2, both models get a GitHub release and a side-by-side comparison of their generated text.
 
-> **Note:** the code in `llama_lab/` and `modal_app.py` still implements the earlier H100 plan (16,384-entry vocabulary, context 256, 16,384 tokens per step, cosine schedule) and isn't used by the 124M run. The [Runbook](docs/Runbook.md) commands describe that old setup.
+## 6. After Stage 2: SST-5 fine-tuning and post-training on Colab
 
-## 6. Later: SST-5 fine-tuning and post-training
+Once Stage 2 finishes, a copy of the 124M model is fine-tuned on SST-5 sentiment classification, as in CMU 11-711, with a five-way classification head compared against the majority-class baseline. Running it on both the 2.5B and the 10B model shows what the extra pretraining buys. Post-training (SFT, then DPO) follows. All of it runs in Colab notebooks: SST-5 takes minutes, SFT about 40 minutes per 100M tokens on an L4, and DPO a few hours. At 124M the point is learning the pipeline, not a useful assistant.
 
-After pretraining, the plan is to fine-tune a copy of the 124M model on SST-5 sentiment classification, as in CMU 11-711. It uses a five-way classification head and compares against the majority-class baseline, on Colab. Post-training (SFT, then DPO) could follow later. At 124M it costs a few dollars on a small Modal GPU, and the point is learning the pipeline, not a useful assistant.
+## 7. Track 3: a GPT-2 XL-class model on Modal (planned)
+
+Train a model of about 1–1.4B parameters from random weights to a DCLM CORE score of at least **0.2565**, the score of OpenAI's GPT-2 XL, on one Modal 8×H100 node, then fine-tune it into a small chat model. [nanochat](https://github.com/karpathy/nanochat) is the reference for the recipe and the numbers, but **we write our own code**: the model, Muon + AdamW, DDP across 8 GPUs, the data pipeline and the evaluation.
+
+| Phase | What | Cap (USD) |
+| --- | --- | ---: |
+| 1. Data | A new 32,768-entry tokenizer with chat tokens; about 15B FineWeb-Edu tokens into a Modal Volume | 10 |
+| 2. Trainer | Our own multi-GPU trainer, tested on CPU and Colab | 0 |
+| 3. Pilot | Speed, memory and resume on 8×H100; prices the full run | 30 |
+| 4. Rehearsal | A complete small-depth run to its CORE score | 20 |
+| 5. Full run | Depth 24–26 to CORE ≥ 0.2565 | set from the pilot; expected 100–200 |
+| 6. Chat | SFT (optionally RL), chat evaluation, export to Colab | 20 |
+
+Each phase starts only when the previous one's gate is met, so at most USD 60 is spent before committing to the full run. An 8×H100 node costs about USD 35 per hour on Modal with CPU and memory; the Starter plan's USD 30 of monthly credits pays for part of each month's work. [The plan](docs/Plan.md) has the recipe, gates and cost model, and the [Runbook](docs/Runbook.md) the checks for every paid run.
+
+Expect fluent text and some general knowledge, not reasoning: that's what GPT-2 XL-level capability means.
 
 ## Project docs
 
-- [Plan](docs/Plan.md) · [Runbook](docs/Runbook.md): written for the earlier H100 plan, to be updated
+- [Plan](docs/Plan.md) · [Runbook](docs/Runbook.md): Track 3 on Modal, its phases, gates, costs and run checks
 - [Learning progress](docs/Learning-Progress.md): decisions, checks, experiments and fixes
 - [Cloud walker — Modal](docs/cloud-walker-Modal.md): cloud runs, billing, and lessons from 11-768
-- [Colab companion notebook](notebooks/CS336_Llama_Project_Walkthrough.ipynb): walks through the math and loads the final checkpoint
 
 ## Course adaptations
 
 - **Stanford CS336, Assignment 1.** BPE tokenizer, decoder-only Transformer, AdamW, training loop with checkpoints. Track 1 follows it on TinyStories. Track 2 uses FineWeb-Edu in place of OpenWebText. [CS336](https://cs336.stanford.edu/) · [Assignment 1](https://github.com/stanford-cs336/assignment1-basics)
 - **CMU 11-711, Build Your Own Llama.** Llama 2 blocks, sampling with temperature and top-p, SST-5 fine-tuning. We pretrain our own checkpoint on FineWeb-Edu instead of loading the course's TinyStories reference model, and use our own tokenizer throughout.
+- **Stanford CS336, Assignments 2–5 (Track 3, planned).** Systems: DDP across 8 GPUs, profiling and MFU. Scaling and data: the depth dial, the token budget and a larger data pipeline. Alignment: SFT, and optionally RL. [Plan](docs/Plan.md#course-work-and-adaptations)

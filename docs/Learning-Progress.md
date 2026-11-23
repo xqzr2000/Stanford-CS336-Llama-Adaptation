@@ -36,7 +36,7 @@ A read-through of the code before the first GPU job found no crash-level errors 
 | A stuck job could bill an H100 for 24 hours, because the runtime limit is checked only after a completed step. | The function timeout is 6 hours and one invocation accepts at most 330 minutes. A stall guard fails the job after 15 minutes without a completed step or checkpoint. |
 | Throughput and training loss were only in the logs, which the Starter plan keeps for one day. | Each `metrics-*.json` now records training loss, `train_tokens_per_second`, and validation and save time. |
 | The default batch ran 8 sequences per pass with 8 accumulation passes, which uses a small part of the H100 per pass. | The default is 64 sequences in one pass, the same 16,384 tokens per step. Validation now covers 512 windows. |
-| The schedule length is stored in the checkpoint, so a pilot inside the main run fixes it before throughput is known. | The pilot uses its own run ID. The main run starts after the schedule is chosen from the [cost estimate](Plan.md#cost-estimate). |
+| The schedule length is stored in the checkpoint, so a pilot inside the main run fixes it before throughput is known. | The pilot uses its own run ID. The main run starts after the schedule is chosen from the [cost estimate](https://github.com/xqzr2000/Stanford-CS336-Llama-Adaptation/blob/75bc2dc/docs/Plan.md#cost-estimate). |
 
 The trainer also reads the token files into memory, so random batch windows do not depend on Volume read speed.
 
@@ -107,6 +107,24 @@ The sweep's frequent checkpoints took up about 10 GB in Drive. For the full run,
 The full run processed **327.68M tokens** and reached **1.4466** on the fixed 512-window validation sample and **1.4099** on the full split, for a perplexity of **4.10**. In the saved blue-kite comparison, the sweep sample drifts between characters while the full-run sample keeps the robot and the girl in a story with a clear problem and resolution. [Trained notebook, Section 12](../CS336_Colab/TinyStories/CS336_TinyStories_Trained.ipynb).
 
 We committed the [metrics](../CS336_Colab/TinyStories/runs/metrics.json) and [learning curves](../CS336_Colab/TinyStories/runs/learning_curves.png) and published the FP16 export as [`model.pt` on the `tinystories-v1` release](https://github.com/xqzr2000/Stanford-CS336-Llama-Adaptation/releases/tag/tinystories-v1). The export includes the tokenizer and model configuration for CPU generation.
+
+## November 19–22, 2026 · Track 2 Stage 1 on Colab, and a new plan for Modal
+
+**Track 2 moved to Colab.** The LR sweep (4 rates × 400 steps on an L4) picked a peak rate of `2e-3`: 4.220 at step 400, while `3e-3` spiked as warmup ended. The full run then trained on Colab instead of a Modal H100. It saves a checkpoint to Drive every hour, resumes on any GPU, and the compute units come with the Google AI Pro subscription. Colab never assigned an A100, so it ran on an L4: about as cheap per token, but 3–4 times slower.
+
+**Stage 1 is done.** 2.5B tokens at `2e-3`, then a 0.5B-token linear decay branched from the step-4,768 checkpoint, gave a validation loss of **3.136** (full split **3.126**) in 20.9 hours. Stage 2 continues the main run to 10B tokens. [Results](../CS336_Colab/README.md#fineweb-edu).
+
+| Decision | Reason |
+| --- | --- |
+| Sample training windows without replacement, from a seeded order per epoch. | Over one pass of the data, sampling with replacement leaves about a third of the tokens unseen. |
+| Keep a permanent pre-decay checkpoint and branch the 2.5B model's decay from it. | The main run continues at a constant rate, so the decay never touches it. |
+| Plan Track 3 as a GPT-2 XL-class model with a modern recipe on Modal 8×H100. | Reaching GPT-2 XL's CORE takes about USD 100–200 this way, against USD 1,000–1,400 for a classic 30B-token reproduction. See the [plan](Plan.md). |
+| Delete the old 124M Modal code (`llama_lab/`, `modal_app.py`, its tests, the walkthrough notebook) and its CI. | Track 2 doesn't use it. Track 3 needs a new multi-GPU trainer, written phase by phase. Git history keeps the old code. |
+| Keep SST-5 fine-tuning and post-training for the 124M model on Colab, after Stage 2. | They're small jobs at this size and fit the same notebook workflow. |
+
+**What we learned.** The decay matters as much as the length of the run. On the same batches at step 5,000, the decaying branch was 0.027 nats ahead of the run still at `2e-3`, and it gained 0.138 nats over the whole decay. A WSD schedule gets a finished model at any point of the run for the price of a short decay.
+
+**Next.** Finish Stage 2 on the L4, in sessions of about 10 hours. Start Track 3 Phase 1 (tokenizer and data) when the plan is merged.
 
 ## Entry template
 

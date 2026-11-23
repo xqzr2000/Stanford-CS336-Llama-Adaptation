@@ -1,7 +1,7 @@
 [project]
 name = "cs336-llama-adaptation"
 version = "0.1.0"
-description = "Pretrain a 124M Llama-style model on Modal"
+description = "Train GPT-2-class language models from scratch: Colab notebooks, and Modal for Track 3"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "modal>=1.3,<2",

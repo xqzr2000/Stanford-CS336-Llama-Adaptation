@@ -1,0 +1,152 @@
+{
+  "format_version": 2,
+  "dataset": "HuggingFaceFW/fineweb-edu",
+  "subset": "sample/10BT",
+  "vocab_size": 32000,
+  "eos_token": "<|endoftext|>",
+  "dtype": "uint16",
+  "revision": "87f09149ef4734204d70ed1d046ddc9ca3f2b8f9",
+  "eos_id": 0,
+  "tokenizer_sha256": "ffd28a61329a640749692a356a0b259d4a7ceb987b408fb2305a03ebc3c50cde",
+  "tokenizer": "byte-level BPE (Hugging Face tokenizers)",
+  "tokenizer_train_documents": 200000,
+  "train_files": [
+    "sample/10BT/000_00000.parquet",
+    "sample/10BT/001_00000.parquet",
+    "sample/10BT/002_00000.parquet",
+    "sample/10BT/003_00000.parquet",
+    "sample/10BT/004_00000.parquet",
+    "sample/10BT/005_00000.parquet",
+    "sample/10BT/006_00000.parquet",
+    "sample/10BT/007_00000.parquet",
+    "sample/10BT/008_00000.parquet",
+    "sample/10BT/009_00000.parquet",
+    "sample/10BT/010_00000.parquet",
+    "sample/10BT/011_00000.parquet",
+    "sample/10BT/012_00000.parquet"
+  ],
+  "valid": {
+    "path": "valid.u16",
+    "files": [
+      "sample/10BT/013_00000.parquet"
+    ],
+    "tokens": 10287423,
+    "documents": 9984,
+    "fingerprint": "61fe910c07859a713701e367cdd2d57f1ad18cc6af756a9aa42d237e77d37485"
+  },
+  "parts": [
+    {
+      "path": "train-000-001.u16",
+      "files": [
+        "sample/10BT/000_00000.parquet",
+        "sample/10BT/001_00000.parquet"
+      ],
+      "tokens": 1512150513,
+      "documents": 1455000,
+      "fingerprint": "25f26932fc5983e3147fd61c6be654e0dc3b970d51cd3fb9406800b7341e3872",
+      "source": "sweep cache"
+    },
+    {
+      "path": "train-002.u16",
+      "files": [
+        "sample/10BT/002_00000.parquet"
+      ],
+      "tokens": 755522963,
+      "documents": 727000,
+      "fingerprint": "37a42758f502d34f4d8932712e1a5d1acf14e4ce5cb6d37aaaec089ae0f37424"
+    },
+    {
+      "path": "train-003.u16",
+      "files": [
+        "sample/10BT/003_00000.parquet"
+      ],
+      "tokens": 753971651,
+      "documents": 734000,
+      "fingerprint": "b51c5dba05c05b635e0df46fbc1ce0f41a4f47cca44e20143f288a1aacd7fcfb"
+    },
+    {
+      "path": "train-004.u16",
+      "files": [
+        "sample/10BT/004_00000.parquet"
+      ],
+      "tokens": 753166887,
+      "documents": 745000,
+      "fingerprint": "27ab05cb3bf8de437618ab9f5273fbb6a8c8e374fdf56ddfd6de3bf1586bd524"
+    },
+    {
+      "path": "train-005.u16",
+      "files": [
+        "sample/10BT/005_00000.parquet"
+      ],
+      "tokens": 755223281,
+      "documents": 738000,
+      "fingerprint": "8c25c31b5f4e162ded4e46d2865273e7be155dde6e5d414eac91ee35e121434b"
+    },
+    {
+      "path": "train-006.u16",
+      "files": [
+        "sample/10BT/006_00000.parquet"
+      ],
+      "tokens": 757081680,
+      "documents": 732000,
+      "fingerprint": "06656519df457c499f5d0b3038a9bb9ba319c8003b3f931094a54b5c72e5045c"
+    },
+    {
+      "path": "train-007.u16",
+      "files": [
+        "sample/10BT/007_00000.parquet"
+      ],
+      "tokens": 756570483,
+      "documents": 725000,
+      "fingerprint": "61ff855a6b8a986b97f27ae58b63eedbd16928fb00061104adc742fd254defd1"
+    },
+    {
+      "path": "train-008.u16",
+      "files": [
+        "sample/10BT/008_00000.parquet"
+      ],
+      "tokens": 755842117,
+      "documents": 724000,
+      "fingerprint": "9b4e877f12c5236da47a6b647a9671c61d29f4d48cf814aa4e73911387a6ce60"
+    },
+    {
+      "path": "train-009.u16",
+      "files": [
+        "sample/10BT/009_00000.parquet"
+      ],
+      "tokens": 757810178,
+      "documents": 713000,
+      "fingerprint": "d35c0e867a785cecd1dba8e5073c66411e2ba0fab340a50c34957d0dd5787f1b"
+    },
+    {
+      "path": "train-010.u16",
+      "files": [
+        "sample/10BT/010_00000.parquet"
+      ],
+      "tokens": 755647643,
+      "documents": 730000,
+      "fingerprint": "a422319f567b9e5ab8a1f9acf242e7d58845f8a050be329d697b9a7af0af44fa"
+    },
+    {
+      "path": "train-011.u16",
+      "files": [
+        "sample/10BT/011_00000.parquet"
+      ],
+      "tokens": 754400609,
+      "documents": 735000,
+      "fingerprint": "1f4ce36d7e241bdfc73beefab4f2c562ed7084528cf5377f95f9a1a077ca5a34"
+    },
+    {
+      "path": "train-012.u16",
+      "files": [
+        "sample/10BT/012_00000.parquet"
+      ],
+      "tokens": 754896853,
+      "documents": 732000,
+      "fingerprint": "0e1446616ef34c5b4c0d44e07c2011c033ddd5f69f20319a23290029d632988f"
+    }
+  ],
+  "complete": true,
+  "started_utc": "2026-11-22 00:55 UTC",
+  "completed_utc": "2026-11-22 02:35 UTC"
+}

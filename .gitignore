@@ -6,5 +6,5 @@ __pycache__/
 .modal.toml
 data/
 runs/
-!/CS336_Colab/runs/
+!/CS336_Colab/*/runs/
 *.pt

@@ -1,0 +1,39 @@
+{
+  "name": "llama124m-2.5B",
+  "track": "branch",
+  "step": 5722,
+  "tokens": 2999975936,
+  "val_loss": 3.1359331607818604,
+  "full_split_val_loss": 3.125843969303703,
+  "full_split_windows": 10046,
+  "peak_lr": 0.002,
+  "config": {
+    "vocab_size": 32000,
+    "context": 1024,
+    "width": 768,
+    "layers": 12,
+    "query_heads": 12,
+    "kv_heads": 4,
+    "ffn_width": 2048,
+    "rope_theta": 10000.0,
+    "norm_eps": 1e-05
+  },
+  "parameters": 124668672,
+  "tokenizer_sha256": "ffd28a61329a640749692a356a0b259d4a7ceb987b408fb2305a03ebc3c50cde",
+  "dataset_revision": "87f09149ef4734204d70ed1d046ddc9ca3f2b8f9",
+  "samples": [
+    {
+      "prompt": "The water cycle begins when",
+      "text": "The water cycle begins when there is enough water in the sky to support life. Once it reaches its liquid form, the water is called water vapor. The water vapor is a result of the condensation of water vapor from the atmosphere. During this condensation, water droplets evaporate and become a gas. This process produces a new water"
+    },
+    {
+      "prompt": "In mathematics, a prime number is",
+      "text": "In mathematics, a prime number is a prime number that has the same square root of zero as the other prime numbers. In other words, the square root of the prime number is 1.\nA prime number is a non-negative integer or integer. A non-negative integer is a positive integer. For example, a prime number"
+    },
+    {
+      "prompt": "The French Revolution began",
+      "text": "The French Revolution began when the French Revolution was declared in 1789, and the United States was the first nation to ratify it. In 1802, the Constitution was adopted by the Continental Congress.\nThe Constitutional Convention of 1787 gave a strong reason to begin the American Revolution, but also gave a reason to begin the new"
+    }
+  ],
+  "exported_utc": "2026-11-23 00:11 UTC"
+}

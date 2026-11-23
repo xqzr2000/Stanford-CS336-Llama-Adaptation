@@ -1,0 +1,66 @@
+{
+  "spec": {
+    "format_version": 1,
+    "model": {
+      "vocab_size": 32000,
+      "context": 1024,
+      "width": 768,
+      "layers": 12,
+      "query_heads": 12,
+      "kv_heads": 4,
+      "ffn_width": 2048,
+      "rope_theta": 10000.0,
+      "norm_eps": 1e-05
+    },
+    "parameters": 124668672,
+    "tokenizer_sha256": "ffd28a61329a640749692a356a0b259d4a7ceb987b408fb2305a03ebc3c50cde",
+    "dataset_revision": "87f09149ef4734204d70ed1d046ddc9ca3f2b8f9",
+    "train_files": [
+      "sample/10BT/000_00000.parquet",
+      "sample/10BT/001_00000.parquet",
+      "sample/10BT/002_00000.parquet",
+      "sample/10BT/003_00000.parquet",
+      "sample/10BT/004_00000.parquet",
+      "sample/10BT/005_00000.parquet",
+      "sample/10BT/006_00000.parquet",
+      "sample/10BT/007_00000.parquet",
+      "sample/10BT/008_00000.parquet",
+      "sample/10BT/009_00000.parquet",
+      "sample/10BT/010_00000.parquet",
+      "sample/10BT/011_00000.parquet",
+      "sample/10BT/012_00000.parquet"
+    ],
+    "train_tokens": 9822284858,
+    "windows_per_epoch": 9592058,
+    "context": 1024,
+    "effective_batch": 512,
+    "tokens_per_step": 524288,
+    "peak_lr": 0.002,
+    "warmup_steps": 250,
+    "weight_decay": 0.1,
+    "betas": [
+      0.9,
+      0.95
+    ],
+    "grad_clip": 1.0,
+    "seed": 336,
+    "branch_at_step": 4768,
+    "branch_decay_steps": 954,
+    "val_windows": 512,
+    "precision": "bf16 autocast, fp32 master weights"
+  },
+  "schedule": {
+    "total_steps": 19073,
+    "final_decay_fraction": 0.2,
+    "decay_start_step": 15258
+  },
+  "schedule_history": [
+    {
+      "total_steps": 19073,
+      "final_decay_fraction": 0.2,
+      "decay_start_step": 15258,
+      "utc": "2026-11-22 03:18 UTC"
+    }
+  ],
+  "created_utc": "2026-11-22 03:18 UTC"
+}

@@ -1,0 +1,145 @@
+{
+  "experiment": "lr_sweep_v1",
+  "spec": {
+    "format_version": 1,
+    "plan": "l4",
+    "learning_rates": [
+      0.0006,
+      0.001,
+      0.002,
+      0.003
+    ],
+    "steps": 400,
+    "model": {
+      "vocab_size": 32000,
+      "context": 1024,
+      "width": 768,
+      "layers": 12,
+      "query_heads": 12,
+      "kv_heads": 4,
+      "ffn_width": 2048,
+      "rope_theta": 10000.0,
+      "norm_eps": 1e-05
+    },
+    "parameters": 124668672,
+    "tokenizer_sha256": "ffd28a61329a640749692a356a0b259d4a7ceb987b408fb2305a03ebc3c50cde",
+    "dataset_revision": "87f09149ef4734204d70ed1d046ddc9ca3f2b8f9",
+    "train_tokens": 1512150513,
+    "context": 1024,
+    "effective_batch": 512,
+    "tokens_per_step": 524288,
+    "warmup_steps": 250,
+    "weight_decay": 0.1,
+    "betas": [
+      0.9,
+      0.95
+    ],
+    "grad_clip": 1.0,
+    "seed": 336,
+    "eval_every": 50,
+    "val_windows": 512,
+    "precision": "bf16 autocast, fp32 master weights"
+  },
+  "probe": {
+    "gpu": "NVIDIA L4 (compute capability 8.9)",
+    "gpu_tag": "l4",
+    "torch": "2.14.1+cu130",
+    "rows": [
+      {
+        "microbatch": 16,
+        "first_step_seconds": 52.193820721000066,
+        "tokens_per_second": 42759.140176320085,
+        "eval_seconds": 20.328599508000025,
+        "peak_gib": 13.346360683441162,
+        "headroom_gib": 3.848097324371338,
+        "status": "ok",
+        "mfu": 0.2522443804820766
+      },
+      {
+        "microbatch": 8,
+        "first_step_seconds": 45.496741834999966,
+        "tokens_per_second": 42776.14033764692,
+        "eval_seconds": 19.88461621700003,
+        "peak_gib": 7.716386318206787,
+        "headroom_gib": 6.368696689605713,
+        "status": "ok",
+        "mfu": 0.2523446676988986
+      },
+      {
+        "microbatch": 4,
+        "first_step_seconds": 46.02074078600003,
+        "tokens_per_second": 40918.31325201367,
+        "eval_seconds": 19.772472042000004,
+        "peak_gib": 4.9021315574646,
+        "headroom_gib": 11.3040452003479,
+        "status": "ok",
+        "mfu": 0.24138498889511606
+      }
+    ],
+    "microbatch": 8,
+    "tokens_per_second": 42776.14033764692,
+    "mfu": 0.2523446676988986,
+    "measured_utc": "2026-11-20 08:12 UTC"
+  },
+  "finished": true,
+  "recommended_peak_lr": 0.002,
+  "lowest_final_val_loss_lr": 0.002,
+  "rows": [
+    {
+      "peak_lr": 0.0006,
+      "status": "complete",
+      "step": 400,
+      "final_val_loss": 4.43375301361084,
+      "max_loss_rise_after_warmup": 0.021953153610230203,
+      "gpu_tags": [
+        "l4"
+      ],
+      "sample": {
+        "prompt": "The water cycle begins when",
+        "text": "The water cycle begins when the water level is low, depending on the environment and the water level, while the pressure on the water level decreases. The water level and the amount of water the water level is increased by the water level. This helps increase water levels in the water supply and prevent water retention. When water is too"
+      }
+    },
+    {
+      "peak_lr": 0.001,
+      "status": "complete",
+      "step": 400,
+      "final_val_loss": 4.307085037231445,
+      "max_loss_rise_after_warmup": 0.07710223197936994,
+      "gpu_tags": [
+        "l4"
+      ],
+      "sample": {
+        "prompt": "The water cycle begins when",
+        "text": "The water cycle begins when a water contaminated with water. Once the water is identified, the water will continue to drain and return.\nWith a series of water-soluble vitamins, water, and water, the researchers found that water with the lowest amounts of water-soluble vitamins are converted to water and water for water. They"
+      }
+    },
+    {
+      "peak_lr": 0.002,
+      "status": "complete",
+      "step": 400,
+      "final_val_loss": 4.219554901123047,
+      "max_loss_rise_after_warmup": 0.020675754547118785,
+      "gpu_tags": [
+        "l4"
+      ],
+      "sample": {
+        "prompt": "The water cycle begins when",
+        "text": "The water cycle begins when the water temperature is low, water temperature, and temperature.\n- Water temperature: Water is normally water in the water temperature, and can be higher in the water temperature.\n- It is usually a temperature-low. It\u2019s the ideal temperature, especially for a student, to keep it"
+      }
+    },
+    {
+      "peak_lr": 0.003,
+      "status": "complete",
+      "step": 400,
+      "final_val_loss": 4.322813987731934,
+      "max_loss_rise_after_warmup": 0.24067835807800275,
+      "gpu_tags": [
+        "l4"
+      ],
+      "sample": {
+        "prompt": "The water cycle begins when",
+        "text": "The water cycle begins when the water cycle is separated into the water cycle.\nFor example, a plant is the sixth active water cycle in the year to year. In a similar situation, the plant is grown mainly in the water cycle, and a few things, and a few times throughout the year."
+      }
+    }
+  ]
+}
